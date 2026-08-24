@@ -1,0 +1,4 @@
+repository "Lenomation_V2/Lenomation_V2@4432197@cloud"
+  path "/"
+    br "/main"
+    co "/main"
