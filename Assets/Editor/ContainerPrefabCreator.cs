@@ -5,231 +5,256 @@ using UnityEditor;
 
 public class ContainerPrefabCreator
 {
-    // === Chest dimensions (3×3 grid, slightly smaller visually) ===
-    private const float Size   = 2.7f;   // visual size 2.3 original
-    private const float Height = 1.00f; //1 original
-    private const float HalfSize = Size * 0.5f;
-    private const float HalfHeight = Height * 0.5f;
+    public static Vector2Int GetFootprint(int portsX, int portsZ) =>
+        ContainerConfig.GetFootprint(portsX, portsZ);
 
     [MenuItem("Automation/Create Container Prefabs")]
     public static void CreateContainerPrefabs()
     {
         LogisticsPrefabUtility.EnsureAllFolders();
 
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.ContainerFolder}Chest.prefab");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.ContainerFolder}ChestMesh.asset");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.MaterialFolder}Chest.mat");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.MaterialFolder}ChestPort.mat");
-        
-        Material shellMat = LogisticsPrefabUtility.GetOrCreateMaterial("ChestShell", new Color(0.35f, 0.28f, 0.22f));
-        Material recessMat = LogisticsPrefabUtility.GetOrCreateMaterial("ChestRecess", Color.gray);
+        Material shellMat = LogisticsPrefabUtility.GetOrCreateMaterial(
+            "ChestShell", ContainerConfig.ShellColor);
+        Material recessMat = LogisticsPrefabUtility.GetOrCreateMaterial(
+            "ChestRecess", ContainerConfig.RecessColor);
+        Material topMat = LogisticsPrefabUtility.GetOrCreateMaterial(
+            "ChestTop", ContainerConfig.TopColor);
 
-        Mesh mesh = CreatePortedChestMesh(3, 3);
-        AssetDatabase.CreateAsset(mesh, $"{ConveyorConfig.ContainerFolder}ChestMesh.asset");
+        foreach (var (portsX, portsZ) in ContainerConfig.ChestSizes)
+        {
+            string name = $"Chest_{portsX}x{portsZ}";
+            Vector2Int footprint = GetFootprint(portsX, portsZ);
 
-        CreateChestPrefab(mesh, shellMat, recessMat);
+            LogisticsPrefabUtility.DeleteIfExists(
+                $"{LogisticsConfig.ContainerFolder}{name}.prefab");
+            LogisticsPrefabUtility.DeleteIfExists(
+                $"{LogisticsConfig.ContainerFolder}{name}_Mesh.asset");
+
+            Mesh mesh = CreatePortedChestMesh(portsX, portsZ);
+            AssetDatabase.CreateAsset(
+                mesh, $"{LogisticsConfig.ContainerFolder}{name}_Mesh.asset");
+
+            CreateChestPrefab(name, mesh, shellMat, recessMat, topMat, portsX, portsZ, footprint);
+        }
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Container prefabs created successfully (Chest).");
+        Debug.Log($"Container prefabs created: {ContainerConfig.ChestSizes.Length} chest sizes.");
     }
-    
 
-    private static void CreateChestPrefab(Mesh mesh, Material shellMat, Material recessMat)
+    // ------------------------------------------------------------------
+    // Prefab
+    // ------------------------------------------------------------------
+    private static void CreateChestPrefab(
+        string name,
+        Mesh mesh,
+        Material shellMat,
+        Material recessMat,
+        Material topMat,
+        int portsX,
+        int portsZ,
+        Vector2Int footprint)
     {
-        string path = $"{ConveyorConfig.ContainerFolder}Chest.prefab";
+        string path = $"{LogisticsConfig.ContainerFolder}{name}.prefab";
 
-        GameObject root = new GameObject("Chest");
+        GameObject root = new GameObject(name);
 
-        // === Main body ===
         var mf = root.AddComponent<MeshFilter>();
         mf.sharedMesh = mesh;
 
         var mr = root.AddComponent<MeshRenderer>();
-    
-        // Assign materials according to submesh order
-        // Submesh 0 = Shell (outer body)
-        // Submesh 1 = Recess (ports / inset parts)
-        mr.sharedMaterials = new Material[] { shellMat, recessMat };
+        // Submesh 0 = shell, 1 = recess, 2 = top
+        mr.sharedMaterials = new Material[] { shellMat, recessMat, topMat };
 
         var col = root.AddComponent<BoxCollider>();
-        col.size = new Vector3(Size, Height, Size);
+        col.size = new Vector3(footprint.x, ContainerConfig.ChestHeight, footprint.y);
+        col.center = new Vector3(0f, ContainerConfig.ChestHeight * 0.5f, 0f);
 
-        // Inventory
         var container = root.AddComponent<Container>();
-        container.slotCount = 4;
+        container.slotCount = ContainerConfig.SlotCountForPorts(portsX, portsZ);
+        container.footprintX = footprint.x;
+        container.footprintZ = footprint.y;
 
-        // === ConnectionPoints only (no visual cubes) ===
-        CreateConnectionPoints(root, container);
+        CreateConnectionPoints(root, container, footprint.x, footprint.y, portsX, portsZ);
 
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
     }
 
-    private static void CreateConnectionPoints(GameObject parent, Container container)
+    // ------------------------------------------------------------------
+    // Connection points
+    // ------------------------------------------------------------------
+    private static void CreateConnectionPoints(
+        GameObject parent,
+        Container container,
+        float sizeX,
+        float sizeZ,
+        int portsX,
+        int portsZ)
     {
-        float y = 0.15f;
-        float[] offsets = { -1f, 0f, 1f };
+        float halfX = sizeX * 0.5f;
+        float halfZ = sizeZ * 0.5f;
+        float y = ContainerConfig.PortBottom;
 
-        Vector3[] sideDirs = {
-            new Vector3( 0, 0,  1), // Front
-            new Vector3( 0, 0, -1), // Back
-            new Vector3( 1, 0,  0), // Right
-            new Vector3(-1, 0,  0)  // Left
-        };
-
-        string[] sideNames = { "Front", "Back", "Right", "Left" };
-
-        for (int s = 0; s < 4; s++)
-        {
-            Vector3 dir = sideDirs[s];
-            Vector3 right = Vector3.Cross(Vector3.up, dir);
-
-            for (int i = 0; i < 3; i++)
-            {
-                // Slightly recessed position (will match the final mesh later)
-                Vector3 pos = dir * (HalfSize - 0.04f)
-                              + right * offsets[i]
-                              + Vector3.up * y;
-
-                GameObject cpGO = new GameObject($"Port_{sideNames[s]}_{i + 1}");
-                cpGO.transform.SetParent(parent.transform, false);
-                cpGO.transform.localPosition = pos;
-
-                var cp = cpGO.AddComponent<ConnectionPoint>();
-                cp.type = ConnectionType.Both;
-                cp.owner = container;
-                cp.radius = 0.35f;
-            }
-        }
+        // Front / Back → portsX    Left / Right → portsZ
+        CreatePortsOnSide(parent, container, "Front",
+            new Vector3(0, 0, 1), halfZ, GetPortOffsets(portsX), portsX, y);
+        CreatePortsOnSide(parent, container, "Back",
+            new Vector3(0, 0, -1), halfZ, GetPortOffsets(portsX), portsX, y);
+        CreatePortsOnSide(parent, container, "Right",
+            new Vector3(1, 0, 0), halfX, GetPortOffsets(portsZ), portsZ, y);
+        CreatePortsOnSide(parent, container, "Left",
+            new Vector3(-1, 0, 0), halfX, GetPortOffsets(portsZ), portsZ, y);
     }
 
-    /// <summary>
-    /// Returns all edge positions for one side (including outer corners).
-    /// Ports are centred on 1×1 tiles. Works for odd and even port counts.
-    /// </summary>
-    private static List<float> GetEdgePositions(float sideLength, float packageSlotSize, int portCount)
+    private static float[] GetPortOffsets(int portCount)
     {
-        List<float> positions = new List<float>();
-        float halfSlot = packageSlotSize * 0.5f;
-
-        // Port centres (always centred on logical 1×1 tiles)
-        List<float> portCentres = new List<float>();
-
+        float[] offsets = new float[portCount];
         if (portCount % 2 == 1)
         {
-            // Odd: middle port exactly at centre
-            float mid = sideLength * 0.5f;
-            int midIndex = portCount / 2;
+            int mid = portCount / 2;
             for (int i = 0; i < portCount; i++)
-                portCentres.Add(mid + (i - midIndex) * 1f);
+                offsets[i] = (i - mid) * ContainerConfig.TileSize;
         }
         else
         {
-            // Even: symmetrical around centre
-            float offset = -((portCount - 1) * 0.5f);
+            float start = -((portCount - 1) * 0.5f) * ContainerConfig.TileSize;
             for (int i = 0; i < portCount; i++)
-                portCentres.Add(sideLength * 0.5f + (offset + i) * 1f);
+                offsets[i] = start + i * ContainerConfig.TileSize;
+        }
+        return offsets;
+    }
+
+    private static void CreatePortsOnSide(
+        GameObject parent,
+        Container container,
+        string sideName,
+        Vector3 dir,
+        float halfAlongDir,
+        float[] offsets,
+        int portCount,
+        float y)
+    {
+        Vector3 right = Vector3.Cross(Vector3.up, dir);
+
+        for (int i = 0; i < portCount; i++)
+        {
+            Vector3 pos = dir * (halfAlongDir - ContainerConfig.PortSurfaceOffset)
+                        + right * offsets[i]
+                        + Vector3.up * y;
+
+            GameObject cpGO = new GameObject($"Port_{sideName}_{i + 1}");
+            cpGO.transform.SetParent(parent.transform, false);
+            cpGO.transform.localPosition = pos;
+
+            var cp = cpGO.AddComponent<ConnectionPoint>();
+            cp.type = ConnectionType.Both;
+            cp.owner = container;
+            cp.radius = ContainerConfig.DefaultPortRadius;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Edge positions (tile-centred ports)
+    // ------------------------------------------------------------------
+    private static List<float> GetEdgePositions(float sideLength, float portWidth, int portCount)
+    {
+        List<float> positions = new List<float>();
+        float halfSlot = portWidth * 0.5f;
+
+        List<float> portCentres = new List<float>();
+        if (portCount % 2 == 1)
+        {
+            float mid = sideLength * 0.5f;
+            int midIndex = portCount / 2;
+            for (int i = 0; i < portCount; i++)
+                portCentres.Add(mid + (i - midIndex) * ContainerConfig.TileSize);
+        }
+        else
+        {
+            float offset = -((portCount - 1) * 0.5f) * ContainerConfig.TileSize;
+            for (int i = 0; i < portCount; i++)
+                portCentres.Add(sideLength * 0.5f + offset + i * ContainerConfig.TileSize);
         }
 
-        // Build full side: left corner → ports → right corner
-        positions.Add(0f); // left outer edge
+        positions.Add(0f);
 
         for (int i = 0; i < portCount; i++)
         {
             float centre = portCentres[i];
-            positions.Add(centre - halfSlot); // port start
-            positions.Add(centre + halfSlot); // port end
+            positions.Add(centre - halfSlot);
+            positions.Add(centre + halfSlot);
 
             if (i < portCount - 1)
             {
-                // Mid-gap between this port and the next
                 float nextStart = portCentres[i + 1] - halfSlot;
                 positions.Add((centre + halfSlot + nextStart) * 0.5f);
             }
         }
 
-        positions.Add(sideLength); // right outer edge
+        positions.Add(sideLength);
         return positions;
     }
 
-    /// <summary>
-    /// Creates a ported chest mesh.
-    /// You only need to specify how many ports you want on each axis.
-    /// The method calculates the minimum size required so the ports always fit.
-    /// </summary>
-    private static Mesh CreatePortedChestMesh(int portsX, int portsZ, float minPadding = 0.15f)
+    // ------------------------------------------------------------------
+    // Mesh
+    // ------------------------------------------------------------------
+    private static Mesh CreatePortedChestMesh(int portsX, int portsZ)
     {
-        float packageSlot = ConveyorConfig.PackageSize * 1.05f * 3f;
+        float portWidth  = ContainerConfig.PortWidth;
+        float portHeight = ContainerConfig.PortHeight;
 
-        // -------------------------------------------------
-        // Size = number of ports + 1 tile
-        // -------------------------------------------------
-        // 2 ports → 3 tiles
-        // 3 ports → 4 tiles
-        // 4 ports → 5 tiles
-        float sizeX = portsX + 1;
-        float sizeZ = portsZ + 1;
+        Vector2Int footprint = GetFootprint(portsX, portsZ);
+        float sizeX = footprint.x;
+        float sizeZ = footprint.y;
 
-        // -------------------------------------------------
-        // Safety check – make sure the ports still fit
-        // -------------------------------------------------
-        float maxAllowedSlotX = (sizeX - (portsX + 1) * minPadding) / portsX;
-        float maxAllowedSlotZ = (sizeZ - (portsZ + 1) * minPadding) / portsZ;
+        float maxAllowedX = (sizeX - (portsX + 1) * ContainerConfig.PortPadding) / Mathf.Max(1, portsX);
+        float maxAllowedZ = (sizeZ - (portsZ + 1) * ContainerConfig.PortPadding) / Mathf.Max(1, portsZ);
 
-        if (packageSlot > maxAllowedSlotX + 0.001f || packageSlot > maxAllowedSlotZ + 0.001f)
+        if (portWidth > maxAllowedX + 0.001f || portWidth > maxAllowedZ + 0.001f)
         {
-            Debug.LogError($"CreatePortedChestMesh: Ports do not fit inside {sizeX}×{sizeZ} tiles.\n" +
-                           $"Ports: {portsX}×{portsZ}, PackageSlot: {packageSlot:F3}");
+            Debug.LogError(
+                $"CreatePortedChestMesh: Ports do not fit inside {sizeX}×{sizeZ} tiles.\n" +
+                $"Ports: {portsX}×{portsZ}, PortWidth: {portWidth:F3}");
             return new Mesh();
         }
 
-        // -------------------------------------------------
-        // Continue with normal generation
-        // -------------------------------------------------
-        float halfX = sizeX * 0.5f;
-        float halfZ = sizeZ * 0.5f;
-        float height = Height;
-        float inset  = 0.15f;
+        float halfX  = sizeX * 0.5f;
+        float halfZ  = sizeZ * 0.5f;
+        float height = ContainerConfig.ChestHeight;
+        float inset  = ContainerConfig.PortInset;
 
-        List<float> edgesX = GetEdgePositions(sizeX, packageSlot, portsX);
-        List<float> edgesZ = GetEdgePositions(sizeZ, packageSlot, portsZ);
+        float portBottom = ContainerConfig.PortBottom;
+        float portTop    = portBottom + portHeight;
 
-    float[] heights = { 0f, packageSlot, height };
+        List<float> edgesX = GetEdgePositions(sizeX, portWidth, portsX);
+        List<float> edgesZ = GetEdgePositions(sizeZ, portWidth, portsZ);
 
-    List<Vector3> vertices = new List<Vector3>();
-    List<int> shellTris  = new List<int>();
-    List<int> recessTris = new List<int>();
+        List<Vector3> vertices   = new List<Vector3>();
+        List<int>     shellTris  = new List<int>();
+        List<int>     recessTris = new List<int>();
+        List<int>     topTris    = new List<int>();
 
-    void AddQuad(List<int> tris, int bl, int br, int tl, int tr)
-    {
-        // Correct winding for outward-facing faces
-        tris.Add(bl); tris.Add(tl); tris.Add(tr);
-        tris.Add(bl); tris.Add(tr); tris.Add(br);
-    }
-
-    int AddVertex(Vector3 v)
-    {
-        vertices.Add(v);
-        return vertices.Count - 1;
-    }
-
-    // -------------------------------------------------
-    // PASS 1 – Solid outer walls (skip port openings)
-    // -------------------------------------------------
-    void BuildSolidWall(List<float> edges, System.Func<float, float, Vector3> posFunc)
-    {
-        // For each height band (bottom→mid, mid→top)
-        for (int h = 0; h < 2; h++)
+        void AddQuad(List<int> tris, int bl, int br, int tl, int tr)
         {
-            float y0 = heights[h];
-            float y1 = heights[h + 1];
+            tris.Add(bl); tris.Add(tl); tris.Add(tr);
+            tris.Add(bl); tris.Add(tr); tris.Add(br);
+        }
 
+        int AddVertex(Vector3 v)
+        {
+            vertices.Add(v);
+            return vertices.Count - 1;
+        }
+
+        void BuildWallBand(
+            List<float> edges, float y0, float y1,
+            System.Func<float, float, Vector3> posFunc,
+            bool skipOpenings)
+        {
             for (int e = 0; e < edges.Count - 1; e++)
             {
-                // Skip the port openings (the segment between start and end of a port)
-                bool isOpening = (e % 3 == 1);
-                if (isOpening) continue;
+                if (skipOpenings && (e % 3 == 1)) continue;
 
                 float x0 = edges[e];
                 float x1 = edges[e + 1];
@@ -242,208 +267,125 @@ public class ContainerPrefabCreator
                 AddQuad(shellTris, bl, br, tl, tr);
             }
         }
-    }
 
-    // Front (-Z)
-    BuildSolidWall(edgesX, (e, y) => new Vector3(e - halfX, y, -halfZ));
+        // PASS 1 – Base solid walls (0 → portBottom)
+        BuildWallBand(edgesX, 0f, portBottom, (e, y) => new Vector3( e - halfX, y, -halfZ), false);
+        BuildWallBand(edgesZ, 0f, portBottom, (e, y) => new Vector3( halfX,     y,  e - halfZ), false);
+        BuildWallBand(edgesX, 0f, portBottom, (e, y) => new Vector3(-(e - halfX), y,  halfZ), false);
+        BuildWallBand(edgesZ, 0f, portBottom, (e, y) => new Vector3(-halfX,     y, -(e - halfZ)), false);
 
-// Right (+X)
-    BuildSolidWall(edgesZ, (e, y) => new Vector3(halfX, y, e - halfZ));
+        // PASS 2 – Port-level walls (leave openings)
+        BuildWallBand(edgesX, portBottom, portTop, (e, y) => new Vector3( e - halfX, y, -halfZ), true);
+        BuildWallBand(edgesZ, portBottom, portTop, (e, y) => new Vector3( halfX,     y,  e - halfZ), true);
+        BuildWallBand(edgesX, portBottom, portTop, (e, y) => new Vector3(-(e - halfX), y,  halfZ), true);
+        BuildWallBand(edgesZ, portBottom, portTop, (e, y) => new Vector3(-halfX,     y, -(e - halfZ)), true);
 
-// Back (+Z)
-    BuildSolidWall(edgesX, (e, y) => new Vector3(-(e - halfX), y, halfZ));
-
-// Left (-X)
-    BuildSolidWall(edgesZ, (e, y) => new Vector3(-halfX, y, -(e - halfZ)));
-
-    // -------------------------------------------------
-// PASS 2 – Recessed port boxes
-// -------------------------------------------------
-    void BuildPortRecess(List<float> edges, int portCount,
-        System.Func<float, float, Vector3> outerPos,
-        System.Func<float, float, Vector3> innerPos)
-    {
-        for (int p = 0; p < portCount; p++)
+        // PASS 3 – Recessed port boxes
+        void BuildPortRecess(
+            List<float> edges, int portCount,
+            System.Func<float, float, Vector3> outerPos,
+            System.Func<float, float, Vector3> innerPos)
         {
-            // Each port occupies 3 entries in the edges list: gap, start, end
-            // But because we built edges as: corner, start, end, midgap, start, end, ...
-            // the start/end of port p are at indices:
-            int startIdx = 1 + p * 3;
-            int endIdx   = startIdx + 1;
+            for (int p = 0; p < portCount; p++)
+            {
+                int startIdx = 1 + p * 3;
+                int endIdx   = startIdx + 1;
+                if (endIdx >= edges.Count) continue;
 
-            if (endIdx >= edges.Count) continue;
+                float start = edges[startIdx];
+                float end   = edges[endIdx];
 
-            float start = edges[startIdx];
-            float end   = edges[endIdx];
+                int o_bl = AddVertex(outerPos(start, portBottom));
+                int o_br = AddVertex(outerPos(end,   portBottom));
+                int o_tl = AddVertex(outerPos(start, portTop));
+                int o_tr = AddVertex(outerPos(end,   portTop));
 
-            // We only recess the lower two height levels (bottom and middle)
-            float y0 = heights[0]; // 0
-            float y1 = heights[1]; // packageSlot height
+                int i_bl = AddVertex(innerPos(start, portBottom));
+                int i_br = AddVertex(innerPos(end,   portBottom));
+                int i_tl = AddVertex(innerPos(start, portTop));
+                int i_tr = AddVertex(innerPos(end,   portTop));
 
-            // Outer corners of the port opening
-            int o_bl = AddVertex(outerPos(start, y0));
-            int o_br = AddVertex(outerPos(end,   y0));
-            int o_tl = AddVertex(outerPos(start, y1));
-            int o_tr = AddVertex(outerPos(end,   y1));
-
-            // Inner (recessed) corners
-            int i_bl = AddVertex(innerPos(start, y0));
-            int i_br = AddVertex(innerPos(end,   y0));
-            int i_tl = AddVertex(innerPos(start, y1));
-            int i_tr = AddVertex(innerPos(end,   y1));
-
-            // ----- Recess faces -----
-
-            // Bottom of recess
-            AddQuad(recessTris, o_bl, o_br, i_bl, i_br);
-
-            // Top of recess
-            AddQuad(recessTris, i_tl, i_tr, o_tl, o_tr);
-
-            // Left side of recess
-            AddQuad(recessTris, o_bl, i_bl, o_tl, i_tl);
-
-            // Right side of recess
-            AddQuad(recessTris, i_br, o_br, i_tr, o_tr);
-
-            // Back of recess (the actual inset face)
-            AddQuad(recessTris, i_bl, i_br, i_tl, i_tr);
+                AddQuad(recessTris, o_bl, o_br, i_bl, i_br);
+                AddQuad(recessTris, i_tl, i_tr, o_tl, o_tr);
+                AddQuad(recessTris, o_bl, i_bl, o_tl, i_tl);
+                AddQuad(recessTris, i_br, o_br, i_tr, o_tr);
+                AddQuad(recessTris, i_bl, i_br, i_tl, i_tr);
+            }
         }
-    }
-    
-    // Call it for all four walls
-    BuildPortRecess(edgesX, portsX,
-        (e, y) => new Vector3(e - halfX, y, -halfZ),                 // Front outer
-        (e, y) => new Vector3(e - halfX, y, -halfZ + inset));        // Front inner
 
-    BuildPortRecess(edgesZ, portsZ,
-        (e, y) => new Vector3(halfX, y, e - halfZ),                  // Right outer
-        (e, y) => new Vector3(halfX - inset, y, e - halfZ));         // Right inner
+        BuildPortRecess(edgesX, portsX,
+            (e, y) => new Vector3(e - halfX, y, -halfZ),
+            (e, y) => new Vector3(e - halfX, y, -halfZ + inset));
+        BuildPortRecess(edgesZ, portsZ,
+            (e, y) => new Vector3(halfX, y, e - halfZ),
+            (e, y) => new Vector3(halfX - inset, y, e - halfZ));
+        BuildPortRecess(edgesX, portsX,
+            (e, y) => new Vector3(-(e - halfX), y, halfZ),
+            (e, y) => new Vector3(-(e - halfX), y, halfZ - inset));
+        BuildPortRecess(edgesZ, portsZ,
+            (e, y) => new Vector3(-halfX, y, -(e - halfZ)),
+            (e, y) => new Vector3(-halfX + inset, y, -(e - halfZ)));
 
-    BuildPortRecess(edgesX, portsX,
-        (e, y) => new Vector3(-(e - halfX), y, halfZ),               // Back outer
-        (e, y) => new Vector3(-(e - halfX), y, halfZ - inset));      // Back inner
+        // PASS 4 – Upper walls (portTop → height)
+        BuildWallBand(edgesX, portTop, height, (e, y) => new Vector3( e - halfX, y, -halfZ), true);
+        BuildWallBand(edgesZ, portTop, height, (e, y) => new Vector3( halfX,     y,  e - halfZ), true);
+        BuildWallBand(edgesX, portTop, height, (e, y) => new Vector3(-(e - halfX), y,  halfZ), true);
+        BuildWallBand(edgesZ, portTop, height, (e, y) => new Vector3(-halfX,     y, -(e - halfZ)), true);
 
-    BuildPortRecess(edgesZ, portsZ,
-        (e, y) => new Vector3(-halfX, y, -(e - halfZ)),              // Left outer
-        (e, y) => new Vector3(-halfX + inset, y, -(e - halfZ)));     // Left inner
-
-    // -------------------------------------------------
-// PASS 3 – Solid walls above the ports
-// -------------------------------------------------
-    void BuildAbovePortWalls(List<float> edges, int portCount,
-        System.Func<float, float, Vector3> posFunc)
-    {
-        float y0 = heights[1]; // top of the port (packageSlot)
-        float y1 = heights[2]; // top of the chest
-
-        for (int p = 0; p < portCount; p++)
+        void BuildAbovePortWalls(
+            List<float> edges, int portCount,
+            System.Func<float, float, Vector3> posFunc)
         {
-            int startIdx = 1 + p * 3;
-            int endIdx   = startIdx + 1;
+            for (int p = 0; p < portCount; p++)
+            {
+                int startIdx = 1 + p * 3;
+                int endIdx   = startIdx + 1;
+                if (endIdx >= edges.Count) continue;
 
-            if (endIdx >= edges.Count) continue;
+                float start = edges[startIdx];
+                float end   = edges[endIdx];
 
-            float start = edges[startIdx];
-            float end   = edges[endIdx];
+                int bl = AddVertex(posFunc(start, portTop));
+                int br = AddVertex(posFunc(end,   portTop));
+                int tl = AddVertex(posFunc(start, height));
+                int tr = AddVertex(posFunc(end,   height));
 
-            int bl = AddVertex(posFunc(start, y0));
-            int br = AddVertex(posFunc(end,   y0));
-            int tl = AddVertex(posFunc(start, y1));
-            int tr = AddVertex(posFunc(end,   y1));
-
-            AddQuad(shellTris, bl, br, tl, tr);
+                AddQuad(shellTris, bl, br, tl, tr);
+            }
         }
+
+        BuildAbovePortWalls(edgesX, portsX, (e, y) => new Vector3( e - halfX, y, -halfZ));
+        BuildAbovePortWalls(edgesZ, portsZ, (e, y) => new Vector3( halfX,     y,  e - halfZ));
+        BuildAbovePortWalls(edgesX, portsX, (e, y) => new Vector3(-(e - halfX), y,  halfZ));
+        BuildAbovePortWalls(edgesZ, portsZ, (e, y) => new Vector3(-halfX,     y, -(e - halfZ)));
+
+        // Bottom face → shell
+        {
+            int bl = AddVertex(new Vector3(-halfX, 0f, -halfZ));
+            int br = AddVertex(new Vector3( halfX, 0f, -halfZ));
+            int tl = AddVertex(new Vector3(-halfX, 0f,  halfZ));
+            int tr = AddVertex(new Vector3( halfX, 0f,  halfZ));
+            AddQuad(shellTris, bl, tl, br, tr);
+        }
+
+        // Top face → top submesh
+        {
+            int bl = AddVertex(new Vector3(-halfX, height, -halfZ));
+            int br = AddVertex(new Vector3( halfX, height, -halfZ));
+            int tl = AddVertex(new Vector3(-halfX, height,  halfZ));
+            int tr = AddVertex(new Vector3( halfX, height,  halfZ));
+            AddQuad(topTris, bl, br, tl, tr);
+        }
+
+        Mesh mesh = new Mesh { name = $"PortedChestMesh_{portsX}x{portsZ}" };
+        mesh.subMeshCount = 3;
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(shellTris, 0);
+        mesh.SetTriangles(recessTris, 1);
+        mesh.SetTriangles(topTris, 2);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
     }
-
-// Call for all four walls
-    BuildAbovePortWalls(edgesX, portsX, (e, y) => new Vector3(e - halfX, y, -halfZ));          // Front
-    BuildAbovePortWalls(edgesZ, portsZ, (e, y) => new Vector3(halfX, y, e - halfZ));           // Right
-    BuildAbovePortWalls(edgesX, portsX, (e, y) => new Vector3(-(e - halfX), y, halfZ));        // Back
-    BuildAbovePortWalls(edgesZ, portsZ, (e, y) => new Vector3(-halfX, y, -(e - halfZ)));       // Left
-    
-    // -------------------------------------------------
-// PASS 4 – Top and Bottom faces
-// -------------------------------------------------
-
-// Bottom face (y = 0)
-    {
-        int bl = AddVertex(new Vector3(-halfX, 0f, -halfZ)); // front-left
-        int br = AddVertex(new Vector3( halfX, 0f, -halfZ)); // front-right
-        int tl = AddVertex(new Vector3(-halfX, 0f,  halfZ)); // back-left
-        int tr = AddVertex(new Vector3( halfX, 0f,  halfZ)); // back-right
-
-        // Note: winding is reversed so the normal points downwards
-        AddQuad(shellTris, bl, tl, br, tr);
-    }
-
-// Top face (y = height)
-    {
-        int bl = AddVertex(new Vector3(-halfX, height, -halfZ)); // front-left
-        int br = AddVertex(new Vector3( halfX, height, -halfZ)); // front-right
-        int tl = AddVertex(new Vector3(-halfX, height,  halfZ)); // back-left
-        int tr = AddVertex(new Vector3( halfX, height,  halfZ)); // back-right
-
-        AddQuad(shellTris, bl, br, tl, tr);
-    }
-    
-    // -------------------------------------------------
-    // Finish mesh
-    // -------------------------------------------------
-    Mesh mesh = new Mesh { name = "PortedChestMesh" };
-    mesh.subMeshCount = 2;
-    mesh.SetVertices(vertices);
-    mesh.SetTriangles(shellTris, 0);
-    mesh.SetTriangles(recessTris, 1);
-    mesh.RecalculateNormals();
-    mesh.RecalculateBounds();
-    return mesh;
-}
-  
-  
-  
- 
-private static void DebugShowAllVertices(List<Vector3> topVertices)
-{
-    // Remove old debug objects
-    GameObject old = GameObject.Find("CornerDebugVertices");
-    if (old != null) Object.DestroyImmediate(old);
-
-    GameObject root = new GameObject("CornerDebugVertices");
-
-    for (int i = 0; i < topVertices.Count; i++)
-    {
-        Vector3 pos = topVertices[i];
-
-        // Sphere
-        GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        sphere.name = $"V{i}";
-        sphere.transform.SetParent(root.transform);
-        sphere.transform.position = pos;
-        sphere.transform.localScale = Vector3.one * 0.045f;
-
-        var rend = sphere.GetComponent<Renderer>();
-        rend.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        rend.sharedMaterial.color = Color.cyan;
-
-        Object.DestroyImmediate(sphere.GetComponent<Collider>());
-
-        // Label
-        GameObject labelGO = new GameObject("Label");
-        labelGO.transform.SetParent(sphere.transform);
-        labelGO.transform.localPosition = new Vector3(0f, 0.11f, 0f);
-
-        TextMesh text = labelGO.AddComponent<TextMesh>();
-        text.text = $"V{i}\n({pos.x:F2}, {pos.z:F2})";
-        text.fontSize = 18;
-        text.characterSize = 0.018f;
-        text.anchor = TextAnchor.LowerCenter;
-        text.alignment = TextAlignment.Center;
-        text.color = Color.white;
-    }
-
-    Debug.Log($"Debug: Showing {topVertices.Count} vertices");
-}
- 
 }
 #endif

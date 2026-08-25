@@ -7,9 +7,14 @@ public class Container : MonoBehaviour
     public int slotCount = 4;
     public List<ItemStack> slots = new List<ItemStack>();
 
+    [Header("Footprint (tiles)")]
+    public int footprintX = 2;
+    public int footprintZ = 2;
+
+    public Vector2Int Footprint => new Vector2Int(footprintX, footprintZ);
+
     void Awake()
     {
-        // Ensure we always have exactly slotCount entries
         while (slots.Count < slotCount)
             slots.Add(null);
 
@@ -23,7 +28,7 @@ public class Container : MonoBehaviour
 
         int remaining = amount;
 
-        // First try to stack into existing slots
+        // Stack into existing slots
         for (int i = 0; i < slots.Count; i++)
         {
             if (slots[i] != null && slots[i].item == item && slots[i].amount < item.maxStack)
@@ -32,12 +37,11 @@ public class Container : MonoBehaviour
                 int add = Mathf.Min(space, remaining);
                 slots[i].amount += add;
                 remaining -= add;
-
                 if (remaining <= 0) break;
             }
         }
 
-        // Then find empty slots
+        // Empty slots
         if (remaining > 0)
         {
             for (int i = 0; i < slots.Count; i++)
@@ -47,7 +51,6 @@ public class Container : MonoBehaviour
                     int add = Mathf.Min(item.maxStack, remaining);
                     slots[i] = new ItemStack { item = item, amount = add };
                     remaining -= add;
-
                     if (remaining <= 0) break;
                 }
             }
@@ -55,12 +58,8 @@ public class Container : MonoBehaviour
 
         bool fullyAccepted = remaining <= 0;
 
-        // If we accepted the item and were given a visual,
-        // destroy it because chests currently have no world representation.
         if (fullyAccepted && existingVisual != null)
-        {
             Destroy(existingVisual.gameObject);
-        }
 
         return fullyAccepted;
     }
@@ -76,8 +75,15 @@ public class Container : MonoBehaviour
         taken = slots[slotIndex];
         slots[slotIndex] = null;
 
-        // Chests don’t currently have a visual Package, so visual stays null.
-        // (Later we can spawn one if we want floating items in chests.)
+        // Chests have no world visual – create one for transport
+        if (PrefabManager.Instance != null && PrefabManager.Instance.packagePrefab != null)
+        {
+            GameObject go = Object.Instantiate(PrefabManager.Instance.packagePrefab);
+            visual = go.GetComponent<Package>();
+            if (visual != null)
+                visual.SetItem(taken.item, taken.amount);
+        }
+
         return true;
     }
 }

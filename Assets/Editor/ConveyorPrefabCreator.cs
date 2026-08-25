@@ -13,32 +13,32 @@ public static void CreateConveyorPrefabs()
     // ========== DELETE OLD FILES ==========
     for (int level = 1; level <= 5; level++)
     {
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.StraightFolder}StraightConveyor_L{level}.prefab");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.CornerFolder}CornerConveyor_L{level}.prefab");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.EndCapFolder}EndCapConveyor_L{level}.prefab");
+        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.StraightFolder}StraightConveyor_L{level}.prefab");
+        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.CornerFolder}CornerConveyor_L{level}.prefab");
+        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.EndCapFolder}EndCapConveyor_L{level}.prefab");
     }
 
-    LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.StraightFolder}StraightMesh.asset");
-    LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.CornerFolder}CornerMesh.asset");
-    LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.EndCapFolder}EndCapMesh.asset");
+    LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.StraightFolder}StraightMesh.asset");
+    LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.CornerFolder}CornerMesh.asset");
+    LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.EndCapFolder}EndCapMesh.asset");
     // (Arrow is handled by LogisticsPrefabUtility)
 
     // Materials...
-    Material topMat    = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorTop",    ConveyorConfig.TopColor);
-    Material bottomMat = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorBottom", ConveyorConfig.BottomColor);
-    Material sideMat   = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorSide",   ConveyorConfig.SideColor);
-    Material endCapMat = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorEndCap", ConveyorConfig.EndCapColor);
-    Material arrowMat  = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorArrow",  ConveyorConfig.ArrowColor);
+    Material topMat    = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorTop",    LogisticsConfig.TopColor);
+    Material bottomMat = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorBottom", LogisticsConfig.BottomColor);
+    Material sideMat   = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorSide",   LogisticsConfig.SideColor);
+    Material endCapMat = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorEndCap", LogisticsConfig.EndCapColor);
+    Material arrowMat  = LogisticsPrefabUtility.GetOrCreateMaterial("ConveyorArrow",  LogisticsConfig.ArrowColor);
 
     // Shared meshes
     Mesh straightMesh = CreateStraightMesh();
-    AssetDatabase.CreateAsset(straightMesh, $"{ConveyorConfig.StraightFolder}StraightMesh.asset");
+    AssetDatabase.CreateAsset(straightMesh, $"{LogisticsConfig.StraightFolder}StraightMesh.asset");
 
     Mesh cornerMesh = CreateCurvedCornerMesh();
-    AssetDatabase.CreateAsset(cornerMesh, $"{ConveyorConfig.CornerFolder}CornerMesh.asset");
+    AssetDatabase.CreateAsset(cornerMesh, $"{LogisticsConfig.CornerFolder}CornerMesh.asset");
 
     Mesh endCapMesh = CreateEndCapMesh();
-    AssetDatabase.CreateAsset(endCapMesh, $"{ConveyorConfig.EndCapFolder}EndCapMesh.asset");
+    AssetDatabase.CreateAsset(endCapMesh, $"{LogisticsConfig.EndCapFolder}EndCapMesh.asset");
 
     // Ensure shared arrow
     GameObject arrowPrefab = LogisticsPrefabUtility.EnsureArrowPrefab();
@@ -69,7 +69,7 @@ public static void CreateConveyorPrefabs()
         if (useBoxCollider)
         {
             var col = root.AddComponent<BoxCollider>();
-            col.size = new Vector3(ConveyorConfig.Width, ConveyorConfig.Height, ConveyorConfig.Length);
+            col.size = new Vector3(LogisticsConfig.BeltWidth, LogisticsConfig.BeltHeight, LogisticsConfig.BeltLength);
         }
         else
         {
@@ -86,7 +86,7 @@ public static void CreateConveyorPrefabs()
     
         // Defaults – direction will be set properly when the belt is laid/spawned
         conv.maxItems = maxItems;
-        conv.moveSpeed = ConveyorConfig.DefaultMoveSpeed;
+        conv.moveSpeed = LogisticsConfig.DefaultMoveSpeed;
         conv.beltLevel = level;
         conv.isCorner = isCorner;
     
@@ -114,13 +114,13 @@ public static void CreateConveyorPrefabs()
     private static void CreateStraightPrefab(int level, Mesh mesh, Material top, Material bottom, Material side,
                                              GameObject arrowPrefab)
     {
-        string path = $"{ConveyorConfig.StraightFolder}StraightConveyor_L{level}.prefab";
+        string path = $"{LogisticsConfig.StraightFolder}StraightConveyor_L{level}.prefab";
 
 
         Material[] materials = { top, bottom, side };
         GameObject root = CreateBaseConveyorObject($"StraightConveyor_L{level}", mesh, materials, useBoxCollider: true);
 
-        AddConveyorComponent(root, level, ConveyorConfig.MaxItemsPerBelt, false);
+        AddConveyorComponent(root, level, LogisticsConfig.MaxItemsPerBelt, false);
         AddArrowsForLevel(root, level, false, arrowPrefab);
         
         // Straight
@@ -134,12 +134,12 @@ public static void CreateConveyorPrefabs()
     private static void CreateCornerPrefab(int level, Mesh mesh, Material top, Material bottom, Material side,
                                            GameObject arrowPrefab)
     {
-        string path = $"{ConveyorConfig.CornerFolder}CornerConveyor_L{level}.prefab";
+        string path = $"{LogisticsConfig.CornerFolder}CornerConveyor_L{level}.prefab";
 
         Material[] materials = { top, bottom, side, side };
         GameObject root = CreateBaseConveyorObject($"CornerConveyor_L{level}", mesh, materials);
 
-        AddConveyorComponent(root, level, ConveyorConfig.MaxItemsPerBelt, true);
+        AddConveyorComponent(root, level, LogisticsConfig.MaxItemsPerBelt, true);
         AddArrowsForLevel(root, level, true, arrowPrefab);
         
         // Corner
@@ -152,7 +152,7 @@ public static void CreateConveyorPrefabs()
 
     private static void CreateEndCapPrefab(int level, Mesh mesh, Material endCap, Material top, Material bottom)
     {
-        string path = $"{ConveyorConfig.EndCapFolder}EndCapConveyor_L{level}.prefab";
+        string path = $"{LogisticsConfig.EndCapFolder}EndCapConveyor_L{level}.prefab";
 
         Material[] materials = { endCap, top, bottom };
         GameObject root = CreateBaseConveyorObject($"EndCapConveyor_L{level}", mesh, materials);
@@ -162,65 +162,63 @@ public static void CreateConveyorPrefabs()
     }
 
     // ------------------------------------------------------------------
-    // Arrows
-    // ------------------------------------------------------------------
+// Arrows
+// ------------------------------------------------------------------
     private static void AddArrowsForLevel(GameObject root, int level, bool isCorner,
-                                          GameObject arrowPrefab)
+        GameObject arrowPrefab)
     {
+        // arrowPrefab is no longer needed – LogisticsPrefabUtility always
+        // uses the shared StraightArrow prefab via EnsureArrowPrefab().
 
         if (!isCorner)
         {
-            var positions= ConveyorArrowHelper.GetPositionsStraight(level);
-            
+            var positions = ConveyorArrowHelper.GetPositionsStraight(level);
+            float side = LogisticsConfig.HalfBeltWidth + LogisticsConfig.SideOffset;
+
             for (int i = 0; i < level; i++)
             {
                 Vector3 pos = positions[i];
-                    float side = ConveyorConfig.HalfWidth + ConveyorConfig.SideOffset;
 
-                    // Example for one arrow
-                    LogisticsPrefabUtility.InstantiateArrow(root.transform, $"Arrow_L{i+1}",
-                        new Vector3(-side, pos.y, pos.z),
-                        Quaternion.Euler(0f, 0f, 90f));
+                // Left side
+                LogisticsPrefabUtility.InstantiateArrow(
+                    root.transform,
+                    $"Arrow_L{i + 1}_Left",
+                    new Vector3(-side, pos.y, pos.z),
+                    Quaternion.Euler(0f, 0f, 90f));
 
-                    // Example for one arrow
-                    LogisticsPrefabUtility.InstantiateArrow(root.transform, $"Arrow_L{i+1}",
-                        new Vector3(side, pos.y, pos.z),
-                        Quaternion.Euler(0f, 0f, 90f));
+                // Right side
+                LogisticsPrefabUtility.InstantiateArrow(
+                    root.transform,
+                    $"Arrow_L{i + 1}_Right",
+                    new Vector3(side, pos.y, pos.z),
+                    Quaternion.Euler(0f, 0f, 90f));
             }
         }
         else
         {
             var arrowPlacements = ConveyorArrowHelper.GetPositionsCorner(level);
-            
+
             for (int i = 0; i < level; i++)
             {
-                CreateArrowInstance(root, $"Arrow_{i + 1}", arrowPlacements[i].position,
-                    new Vector3(0,arrowPlacements[i].angle,90f), arrowPrefab);
+                var placement = arrowPlacements[i];
+
+                LogisticsPrefabUtility.InstantiateArrow(
+                    root.transform,
+                    $"Arrow_{i + 1}",
+                    placement.position,
+                    Quaternion.Euler(0f, placement.angle, 90f));
             }
         }
-        
     }
-
-    private static void CreateArrowInstance(GameObject parent, string name, Vector3 localPos, Vector3 angleDegrees,
-        GameObject arrowPrefab)
-    {
-        GameObject arrow = (GameObject)PrefabUtility.InstantiatePrefab(arrowPrefab);
-        arrow.name = name;
-        arrow.transform.SetParent(parent.transform, false);
-        arrow.transform.localPosition = localPos;
-
-        // Rotate around Y axis by the given angle
-        arrow.transform.localRotation = Quaternion.Euler(angleDegrees.x, angleDegrees.y, angleDegrees.z);
-    }
-
+    
     // ------------------------------------------------------------------
     // Meshes
     // ------------------------------------------------------------------
     private static Mesh CreateStraightMesh()
     {
-        float hw = ConveyorConfig.HalfWidth;
-        float hh = ConveyorConfig.HalfHeight;
-        float hl = ConveyorConfig.HalfLength;
+        float hw = LogisticsConfig.HalfBeltWidth;
+        float hh = LogisticsConfig.HalfBeltHeight;
+        float hl = LogisticsConfig.HalfBeltLength;
 
         Vector3[] vertices = {
             new Vector3(-hw, -hh, -hl), new Vector3( hw, -hh, -hl),
@@ -246,11 +244,11 @@ public static void CreateConveyorPrefabs()
 
     private static Mesh CreateCurvedCornerMesh()
     {
-        float hh = ConveyorConfig.HalfHeight;
-        int segments = ConveyorConfig.CurveSegments;
-        float innerRadius = ConveyorConfig.CornerInnerRadius;
-        float outerRadius = ConveyorConfig.CornerOuterRadius;
-        Vector3 centreAdjust = ConveyorConfig.CornerCentreOffset;
+        float hh = LogisticsConfig.HalfBeltHeight;
+        int segments = LogisticsConfig.CurveSegments;
+        float innerRadius = LogisticsConfig.CornerInnerRadius;
+        float outerRadius = LogisticsConfig.CornerOuterRadius;
+        Vector3 centreAdjust = LogisticsConfig.CornerCentreOffset;
 
         List<Vector3> vertices = new List<Vector3>();
         List<int> topTris = new List<int>();
@@ -307,9 +305,9 @@ public static void CreateConveyorPrefabs()
 
     private static Mesh CreateEndCapMesh()
     {
-        float hh = ConveyorConfig.HalfHeight;
-        int segments = ConveyorConfig.CurveSegments;
-        float radius = ConveyorConfig.EndCapRadius;
+        float hh = LogisticsConfig.HalfBeltHeight;
+        int segments = LogisticsConfig.CurveSegments;
+        float radius = LogisticsConfig.EndCapRadius;
 
         List<Vector3> vertices = new List<Vector3>();
         List<int> endCapSides = new List<int>();
@@ -358,8 +356,8 @@ public static void CreateConveyorPrefabs()
 
     private static Mesh CreateStraightArrowMesh()
     {
-        float size  = ConveyorConfig.ArrowSize;
-        float depth = ConveyorConfig.ArrowDepth;
+        float size  = LogisticsConfig.ArrowSize;
+        float depth = LogisticsConfig.ArrowDepth;
         float halfD = depth * 0.5f;
 
         Vector3[] verts = {

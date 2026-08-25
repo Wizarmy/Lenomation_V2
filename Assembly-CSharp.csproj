@@ -57,7 +57,6 @@
     <Compile Include="Assets\Scripts\Data\BonusData.cs" />
     <Compile Include="Assets\Scripts\Player\Inventory.cs" />
     <Compile Include="Assets\Scripts\Logistics\ConveyorArrowHelper.cs" />
-    <Compile Include="Assets\Scripts\Logistics\ConveyorConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\Package.cs" />
     <Compile Include="Assets\Scripts\Logistics\Inserter.cs" />
     <Compile Include="Assets\Scripts\Data\TechNodeData.cs" />
@@ -67,12 +66,15 @@
     <Compile Include="Assets\Scripts\Logistics\ConnectionPoint.cs" />
     <Compile Include="Assets\Scripts\Core\VertexDebug.cs" />
     <Compile Include="Assets\Scripts\Logistics\BeltItem.cs" />
+    <Compile Include="Assets\Scripts\Logistics\LogisticsConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\Conveyor.cs" />
     <Compile Include="Assets\Scripts\Systems\ItemDatabase.cs" />
     <Compile Include="Assets\Scripts\Machines\Machine.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
+    <Compile Include="Assets\Scripts\Core\Configs\InserterConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\Container.cs" />
     <Compile Include="Assets\Scripts\Data\RecipeData.cs" />
+    <Compile Include="Assets\Scripts\Core\Configs\ContainerConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\ArrowPlacement.cs" />
     <Compile Include="Assets\Scripts\Logistics\ConveyorManager.cs" />
     <Compile Include="Assets\Scripts\Core\GameManager.cs" />

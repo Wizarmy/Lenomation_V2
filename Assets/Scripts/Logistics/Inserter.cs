@@ -3,147 +3,224 @@ using System.Collections.Generic;
 
 public class Inserter : MonoBehaviour
 {
-    [Header("Settings")]
-    public float swingSpeed = 180f;
-    public float cooldown = 0.6f;
-    public float maxLinkDistance = 1.2f;
+    private enum Phase
+    {
+        Idle,
+        SlewToPickup,
+        ExtendTelescopePickup,
+        ExtendCablePickup,
+        Grab,
+        RetractCable,
+        RetractTelescope,
+        SlewToDrop,
+        ExtendTelescopeDrop,
+        ExtendCableDrop,
+        Drop,
+        RetractCableAfterDrop,
+        RetractTelescopeAfterDrop,
+        SlewHomeToPickup,
+        ExtendTelescopeHome,
+        ExtendCableHome
+    }
 
     [Header("Linked Ports")]
     public ConnectionPoint sourcePort;
     public ConnectionPoint destPort;
 
-    [Header("Arm Extension")]
-    public float fullArmLength = 0.90f;      // matches the mesh
-    public float retractedPercent = 0.30f;   // 30% while swinging
-    public float extendSpeed = 4f;           // how fast it extends/retracts
+    private Phase phase = Phase.Idle;
+    private float timer;
 
-    private float currentArmLength;
-    private bool armExtended = false;
-    
-    // Internal
-    private float timer = 0f;
-    private bool holdingItem = false;
+    private float armAngle;
+    private float currentReach;
+    private float currentCableLength;
+
+    private bool holdingItem;
     private ItemStack heldStack;
-    private Transform arm;
-    private float armAngle = 0f;
-    
     private Package heldVisual;
-    
-    private float restAngle = 0f;      // angle that points at source
-    private float dropAngle = 180f;    // angle that points at destination
 
-    // Arrow visuals
-    private List<MeshRenderer> arrowRenderers = new List<MeshRenderer>();
-    private static readonly Color ColorUnlinked = new Color(1f, 0.85f, 0.2f);   // yellow
-    private static readonly Color ColorLinked   = new Color(0.2f, 0.9f, 0.3f);   // green
-    private static readonly Color ColorBlocked  = new Color(0.95f, 0.25f, 0.2f); // red
+    private Transform slew, arm, telescope, tip, cable, hook, magnet;
+
+    private readonly List<MeshRenderer> arrowRenderers = new List<MeshRenderer>();
 
     void Awake()
     {
-        arm = transform.Find("Arm");
+        slew      = transform.Find("Slew");
+        arm       = transform.Find("Slew/Arm");
+        telescope = transform.Find("Slew/Arm/Telescope");
+        tip       = transform.Find("Slew/Arm/Telescope/Tip");
+        cable     = transform.Find("Slew/Arm/Telescope/Tip/Cable");
+        hook      = transform.Find("Slew/Arm/Telescope/Tip/Hook");
+        magnet    = transform.Find("Slew/Arm/Telescope/Tip/Hook/Magnet");
 
-        // Cache all arrow renderers
-        foreach (Transform child in transform)
+        foreach (var mr in GetComponentsInChildren<MeshRenderer>())
         {
-            if (child.name.Contains("Arrow") || child.name.Contains("SideArrow"))
-            {
-                var mr = child.GetComponentInChildren<MeshRenderer>();
-                if (mr != null) arrowRenderers.Add(mr);
-            }
+            if (mr.name.Contains("Arrow") || mr.transform.name.Contains("Arrow"))
+                arrowRenderers.Add(mr);
         }
-        currentArmLength = fullArmLength * retractedPercent;
+
+        currentReach = InserterConfig.MinReach;
+        currentCableLength = InserterConfig.CableMinLength;
+        ApplyTransforms();
     }
 
-  void Update()
-{
-    if (ConveyorManager.Instance == null || !ConveyorManager.Instance.isRunning)
-        return;
-
-    UpdateArrowVisuals();
-    UpdateArmTargetAngles();
-
-    timer -= Time.deltaTime;
-
-    const float angleTolerance = 4f;
-
-    if (!holdingItem)
-    {
-        // ----- Move to source -----
-        armAngle = Mathf.MoveTowardsAngle(armAngle, restAngle, swingSpeed * Time.deltaTime);
-        bool atPickupAngle = Mathf.Abs(Mathf.DeltaAngle(armAngle, restAngle)) < angleTolerance;
-
-        if (atPickupAngle)
-        {
-            // Extend
-            currentArmLength = Mathf.MoveTowards(currentArmLength, fullArmLength, extendSpeed * Time.deltaTime);
-            armExtended = Mathf.Abs(currentArmLength - fullArmLength) < 0.01f;
-
-            if (armExtended && timer <= 0f)
-                TryPickup();
-        }
-        else
-        {
-            // Retract while swinging
-            currentArmLength = Mathf.MoveTowards(currentArmLength, fullArmLength * retractedPercent, extendSpeed * Time.deltaTime);
-            armExtended = false;
-        }
-    }
-    else
-    {
-        // ----- Move to destination -----
-        armAngle = Mathf.MoveTowardsAngle(armAngle, dropAngle, swingSpeed * Time.deltaTime);
-        bool atDropAngle = Mathf.Abs(Mathf.DeltaAngle(armAngle, dropAngle)) < angleTolerance;
-
-        if (atDropAngle)
-        {
-            // Extend
-            currentArmLength = Mathf.MoveTowards(currentArmLength, fullArmLength, extendSpeed * Time.deltaTime);
-            armExtended = Mathf.Abs(currentArmLength - fullArmLength) < 0.01f;
-
-            if (armExtended)
-                TryDrop();
-        }
-        else
-        {
-            // Retract while swinging
-            currentArmLength = Mathf.MoveTowards(currentArmLength, fullArmLength * retractedPercent, extendSpeed * Time.deltaTime);
-            armExtended = false;
-        }
-    }
-
-    // Apply both rotation and length to the arm
-    if (arm != null)
-    {
-        arm.localRotation = Quaternion.Euler(0f, armAngle, 0f);
-
-        // Scale the arm on Z (length) while keeping thickness
-        Vector3 scale = arm.localScale;
-        scale.z = currentArmLength / fullArmLength;
-        arm.localScale = scale;
-
-        // Keep the held package at the tip
-        if (heldVisual != null)
-        {
-            heldVisual.transform.localPosition = new Vector3(0f, -0.05f, currentArmLength * 0.95f);
-        }
-    }
-}
-    
-    /// <summary>
-    /// Recalculates the resting angle (source) and drop angle (destination)
-    /// from the currently linked ports.
-    /// </summary>
-    private void UpdateArmTargetAngles()
+    void Start()
     {
         if (sourcePort != null)
-            restAngle = GetAngleTo(sourcePort.transform.position);
-        else
-            restAngle = 0f;
+            phase = Phase.SlewHomeToPickup;
+    }
 
-        if (destPort != null)
-            dropAngle = GetAngleTo(destPort.transform.position);
-        else
-            dropAngle = restAngle + 180f;   // fallback
+    void Update()
+    {
+        if (ConveyorManager.Instance == null || !ConveyorManager.Instance.isRunning)
+            return;
+
+        UpdateArrowVisuals();
+        timer -= Time.deltaTime;
+
+        switch (phase)
+        {
+            case Phase.Idle:
+                if (CanStartCycle())
+                    phase = Phase.Grab;
+                break;
+
+            case Phase.SlewToPickup:
+                if (SlewToward(sourcePort))
+                    phase = Phase.ExtendTelescopePickup;
+                break;
+
+            case Phase.ExtendTelescopePickup:
+                if (MoveReachToward(GetReachTo(sourcePort)))
+                    phase = Phase.ExtendCablePickup;
+                break;
+
+            case Phase.ExtendCablePickup:
+                if (MoveCableToward(PickupCableLength()))
+                    phase = Phase.Grab;
+                break;
+
+            case Phase.Grab:
+                if (timer > 0f) break;
+                if (TryGrab())
+                    phase = Phase.RetractCable;
+                else
+                    phase = Phase.Idle;
+                break;
+
+            case Phase.RetractCable:
+                if (MoveCableToward(InserterConfig.CableMinLength))
+                    phase = Phase.RetractTelescope;
+                break;
+
+            case Phase.RetractTelescope:
+                if (MoveReachToward(InserterConfig.MinReach))
+                    phase = Phase.SlewToDrop;
+                break;
+
+            case Phase.SlewToDrop:
+                if (SlewToward(destPort))
+                    phase = Phase.ExtendTelescopeDrop;
+                break;
+
+            case Phase.ExtendTelescopeDrop:
+                if (MoveReachToward(GetReachTo(destPort)))
+                    phase = Phase.ExtendCableDrop;
+                break;
+
+            case Phase.ExtendCableDrop:
+                if (MoveCableToward(DropCableLength()))
+                    phase = Phase.Drop;
+                break;
+
+            case Phase.Drop:
+                if (TryRelease())
+                {
+                    timer = InserterConfig.Cooldown;
+                    phase = Phase.RetractCableAfterDrop;
+                }
+                break;
+
+            case Phase.RetractCableAfterDrop:
+                if (MoveCableToward(InserterConfig.CableMinLength))
+                    phase = Phase.RetractTelescopeAfterDrop;
+                break;
+
+            case Phase.RetractTelescopeAfterDrop:
+                if (MoveReachToward(InserterConfig.MinReach))
+                    phase = Phase.SlewHomeToPickup;
+                break;
+
+            case Phase.SlewHomeToPickup:
+                if (SlewToward(sourcePort))
+                    phase = Phase.ExtendTelescopeHome;
+                break;
+
+            case Phase.ExtendTelescopeHome:
+                if (MoveReachToward(GetReachTo(sourcePort)))
+                    phase = Phase.ExtendCableHome;
+                break;
+
+            case Phase.ExtendCableHome:
+                if (MoveCableToward(PickupCableLength()))
+                    phase = Phase.Idle;
+                break;
+        }
+
+        ApplyTransforms();
+    }
+
+    // -------------------------------------------------
+    // Movement primitives
+    // -------------------------------------------------
+    private bool SlewToward(ConnectionPoint port)
+    {
+        float target = port != null ? GetAngleTo(port.transform.position) : armAngle;
+        armAngle = Mathf.MoveTowardsAngle(armAngle, target, InserterConfig.SwingSpeed * Time.deltaTime);
+        return Mathf.Abs(Mathf.DeltaAngle(armAngle, target)) < InserterConfig.AngleTolerance;
+    }
+
+    private bool MoveReachToward(float target)
+    {
+        currentReach = Mathf.MoveTowards(currentReach, target, InserterConfig.ExtendSpeed * Time.deltaTime);
+        return Mathf.Abs(currentReach - target) < InserterConfig.PosTolerance;
+    }
+
+    private bool MoveCableToward(float target)
+    {
+        currentCableLength = Mathf.MoveTowards(currentCableLength, target, InserterConfig.CableSpeed * Time.deltaTime);
+        return Mathf.Abs(currentCableLength - target) < InserterConfig.PosTolerance;
+    }
+
+    private float GetReachTo(ConnectionPoint port)
+    {
+        if (port == null) return InserterConfig.MinReach;
+
+        Vector3 origin = slew != null ? slew.position : transform.position;
+        Vector3 delta = port.transform.position - origin;
+        delta.y = 0f;
+        return Mathf.Clamp(delta.magnitude, InserterConfig.MinReach, InserterConfig.FullArmLength);
+    }
+
+    private float PickupCableLength()
+    {
+        float tipY = tip != null ? tip.position.y
+            : (slew != null ? slew.position.y : transform.position.y + 0.7f);
+        float packageTopY = sourcePort != null
+            ? sourcePort.transform.position.y + InserterConfig.PackageHeight * 0.5f
+            : InserterConfig.PackageHeight;
+        float needed = tipY - packageTopY - InserterConfig.PackageClearance;
+        return Mathf.Clamp(needed, InserterConfig.CableMinLength, InserterConfig.CableLength);
+    }
+
+    private float DropCableLength()
+    {
+        float tipY = tip != null ? tip.position.y
+            : (slew != null ? slew.position.y : transform.position.y + 0.7f);
+        float dropY = destPort != null
+            ? destPort.transform.position.y + InserterConfig.PackageHeight * 0.5f
+            : InserterConfig.PackageHeight;
+        float needed = tipY - dropY - InserterConfig.PackageClearance;
+        return Mathf.Clamp(needed, InserterConfig.CableMinLength, InserterConfig.CableLength);
     }
 
     private float GetAngleTo(Vector3 worldPos)
@@ -154,99 +231,110 @@ public class Inserter : MonoBehaviour
     }
 
     // -------------------------------------------------
-    // Arrow visuals
+    // Apply visuals
     // -------------------------------------------------
-    private void UpdateArrowVisuals()
+    private void ApplyTransforms()
     {
-        bool hasSource = sourcePort != null;
-        bool hasDest   = destPort != null;
-        bool linked    = hasSource && hasDest;
+        if (slew != null)
+            slew.localRotation = Quaternion.Euler(0f, armAngle, 0f);
 
-        Color targetColor = ColorUnlinked;
-
-        if (linked)
+        if (telescope != null)
         {
-            // Check if destination can currently accept items
-            bool destReady = destPort.CanAcceptItem();
-            targetColor = destReady ? ColorLinked : ColorBlocked;
-
-            // Point arrows from source toward destination
-            AlignArrowsToDirection(sourcePort.transform.position, destPort.transform.position);
-        }
-        else
-        {
-            // Reset to default orientation when unlinked (optional)
-            // AlignArrowsToDirection(transform.position + transform.forward, transform.position - transform.forward);
+            float z = Mathf.Max(InserterConfig.TelescopeMinZ, currentReach - InserterConfig.InnerArmLength);
+            telescope.localPosition = new Vector3(0f, 0f, z);
         }
 
-        foreach (var mr in arrowRenderers)
+        if (cable != null)
         {
-            if (mr != null)
-                mr.material.color = targetColor;
+            float scaleY = currentCableLength / Mathf.Max(0.001f, InserterConfig.CableLength);
+            cable.localScale = new Vector3(1f, scaleY, 1f);
+            cable.localPosition = Vector3.zero;
         }
-    }
 
-    private void AlignArrowsToDirection(Vector3 from, Vector3 to)
-    {
-        Vector3 dir = (to - from);
-        dir.y = 0f;
-        if (dir.sqrMagnitude < 0.01f) return;
+        if (magnet != null)
+            magnet.localPosition = new Vector3(0f, -currentCableLength, 0f);
 
-        Quaternion look = Quaternion.LookRotation(dir.normalized, Vector3.up);
-
-        foreach (Transform child in transform)
+        if (heldVisual != null && magnet != null)
         {
-            if (child.name.Contains("Arrow") || child.name.Contains("SideArrow"))
-            {
-                // Keep the original Z tilt (90°) that makes the arrow flat/readable
-                Vector3 euler = look.eulerAngles;
-                child.rotation = Quaternion.Euler(0f, euler.y, 90f);
-            }
+            heldVisual.transform.localPosition = new Vector3(0f, InserterConfig.PackageHoldOffsetY, 0f);
+            heldVisual.transform.localScale = Vector3.one;
         }
     }
 
     // -------------------------------------------------
-    // Linking API (with cardinal + distance checks)
+    // Grab / drop
     // -------------------------------------------------
-    public bool LinkSource(ConnectionPoint port)
+    private bool CanStartCycle()
     {
-        if (port == null) { sourcePort = null; return true; }
-
-        if (port.type == ConnectionType.Input)
-        {
-            Debug.LogWarning($"Cannot link Input-only port as source on {name}");
-            return false;
-        }
-
-        float dist = Vector3.Distance(transform.position, port.transform.position);
-        if (dist > maxLinkDistance)
-        {
-            Debug.LogWarning($"Port too far ({dist:F2}) for {name}");
-            return false;
-        }
-
-        if (!IsCardinal(port))
-        {
-            Debug.LogWarning($"Port not cardinal from {name}");
-            return false;
-        }
-
-        sourcePort = port;
+        if (timer > 0f) return false;
+        if (sourcePort == null || destPort == null) return false;
+        if (!sourcePort.CanProvideItem()) return false;
+        if (!destPort.CanAcceptItem()) return false;
         return true;
     }
 
-    public bool LinkDestination(ConnectionPoint port)
+    private bool TryGrab()
     {
-        if (port == null) { destPort = null; return true; }
+        if (sourcePort == null || !sourcePort.CanProvideItem()) return false;
 
-        if (port.type == ConnectionType.Output)
+        if (sourcePort.TryTakeItem(out ItemStack taken, out Package visual))
         {
-            Debug.LogWarning($"Cannot link Output-only port as destination on {name}");
+            heldStack = taken;
+            heldVisual = visual;
+            holdingItem = true;
+
+            if (heldVisual != null && magnet != null)
+            {
+                heldVisual.transform.SetParent(magnet, worldPositionStays: true);
+                heldVisual.transform.localPosition = new Vector3(0f, InserterConfig.PackageHoldOffsetY, 0f);
+                heldVisual.transform.localRotation = Quaternion.identity;
+                heldVisual.transform.localScale = Vector3.one;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private bool TryRelease()
+    {
+        if (destPort == null || heldStack == null) return false;
+
+        if (destPort.TryAddItem(heldStack.item, heldStack.amount, heldVisual))
+        {
+            heldVisual = null;
+            heldStack = null;
+            holdingItem = false;
+            return true;
+        }
+        return false;
+    }
+
+    // -------------------------------------------------
+    // Linking
+    // -------------------------------------------------
+    public bool LinkSource(ConnectionPoint port) =>
+        TryLinkPort(port, ConnectionType.Input, ref sourcePort, "source");
+
+    public bool LinkDestination(ConnectionPoint port) =>
+        TryLinkPort(port, ConnectionType.Output, ref destPort, "destination");
+
+    private bool TryLinkPort(ConnectionPoint port, ConnectionType forbiddenType,
+                             ref ConnectionPoint targetField, string role)
+    {
+        if (port == null)
+        {
+            targetField = null;
+            return true;
+        }
+
+        if (port.type == forbiddenType)
+        {
+            Debug.LogWarning($"Cannot link {forbiddenType}-only port as {role} on {name}");
             return false;
         }
 
         float dist = Vector3.Distance(transform.position, port.transform.position);
-        if (dist > maxLinkDistance)
+        if (dist > InserterConfig.MaxLinkDistance)
         {
             Debug.LogWarning($"Port too far ({dist:F2}) for {name}");
             return false;
@@ -258,7 +346,7 @@ public class Inserter : MonoBehaviour
             return false;
         }
 
-        destPort = port;
+        targetField = port;
         return true;
     }
 
@@ -271,37 +359,40 @@ public class Inserter : MonoBehaviour
         return (absX > 0.3f && absZ < 0.3f) || (absZ > 0.3f && absX < 0.3f);
     }
 
-    private void TryPickup()
+    // -------------------------------------------------
+    // Arrows
+    // -------------------------------------------------
+    private void UpdateArrowVisuals()
     {
-        if (sourcePort == null || !sourcePort.CanProvideItem()) return;
+        bool linked = sourcePort != null && destPort != null;
+        Color c = InserterConfig.ArrowUnlinked;
 
-        if (sourcePort.TryTakeItem(out ItemStack taken, out Package visual))
+        if (linked)
         {
-            heldStack = taken;
-            heldVisual = visual;
-            holdingItem = true;
-            timer = cooldown;
+            c = destPort.CanAcceptItem()
+                ? InserterConfig.ArrowLinked
+                : InserterConfig.ArrowBlocked;
+            AlignArrowsToDirection(sourcePort.transform.position, destPort.transform.position);
+        }
 
-            if (heldVisual != null && arm != null)
-            {
-                heldVisual.transform.SetParent(arm, worldPositionStays: true);
-                heldVisual.transform.localPosition = new Vector3(0f, -0.05f, currentArmLength * 0.95f);
-                heldVisual.transform.localRotation = Quaternion.identity;
-            }
+        foreach (var mr in arrowRenderers)
+        {
+            if (mr != null)
+                mr.material.color = c;
         }
     }
 
-    private void TryDrop()
+    private void AlignArrowsToDirection(Vector3 from, Vector3 to)
     {
-        if (destPort == null || heldStack == null) return;
+        Vector3 dir = to - from;
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.01f) return;
 
-        // Pass the existing visual to the destination
-        if (destPort.TryAddItem(heldStack.item, heldStack.amount, heldVisual))
+        float y = Quaternion.LookRotation(dir.normalized, Vector3.up).eulerAngles.y;
+        foreach (var t in GetComponentsInChildren<Transform>())
         {
-            // Destination now owns the visual – we just clear our references
-            heldVisual = null;
-            heldStack = null;
-            holdingItem = false;
+            if (t.name.Contains("Arrow"))
+                t.rotation = Quaternion.Euler(0f, y, 90f);
         }
     }
 }

@@ -11,20 +11,18 @@ public class ConnectionPoint : MonoBehaviour
 {
     [Header("Settings")]
     public ConnectionType type = ConnectionType.Both;
-    public float radius = 0.4f;                 // how close an inserter needs to be
+    public float radius = 0.4f;
 
     [Header("Runtime (auto)")]
     public MonoBehaviour owner;                 // Conveyor, Container, Machine…
 
-    // Convenience accessors
     public Conveyor AsConveyor => owner as Conveyor;
     public Container AsContainer => owner as Container;
 
     void Awake()
     {
-        // Auto-find owner if not set
         if (owner == null)
-            owner = GetComponentInParent<Conveyor>() 
+            owner = GetComponentInParent<Conveyor>()
                  ?? GetComponentInParent<Container>() as MonoBehaviour;
     }
 
@@ -55,16 +53,11 @@ public class ConnectionPoint : MonoBehaviour
 
         if (type == ConnectionType.Input) return false;
 
-        // ----- Conveyor -----
         if (AsConveyor != null)
-        {
             return AsConveyor.TryTakeItem(out stack, out visual);
-        }
 
-        // ----- Container -----
         if (AsContainer != null)
         {
-            // Try every slot until we find something
             for (int i = 0; i < AsContainer.slots.Count; i++)
             {
                 if (AsContainer.TryTakeItem(i, out stack, out visual))
@@ -80,35 +73,16 @@ public class ConnectionPoint : MonoBehaviour
         if (item == null || amount <= 0) return false;
         if (type == ConnectionType.Output) return false;
 
-        // ----- Conveyor -----
         if (AsConveyor != null)
-        {
-            // Conveyor already supports receiving an existing Package
             return AsConveyor.TryAddItem(item, amount, existingVisual);
-        }
 
-        // ----- Container -----
         if (AsContainer != null)
-        {
-            bool accepted = AsContainer.TryAddItem(item, amount);
-
-            if (accepted)
-            {
-                // Chests currently have no world visual.
-                // If we were given a visual, we destroy it (or you can pool it later).
-                if (existingVisual != null)
-                {
-                    Destroy(existingVisual.gameObject);
-                }
-            }
-
-            return accepted;
-        }
+            // Container owns the visual-destruction policy
+            return AsContainer.TryAddItem(item, amount, existingVisual);
 
         return false;
     }
 
-    // Visual debug
     void OnDrawGizmosSelected()
     {
         Gizmos.color = type switch

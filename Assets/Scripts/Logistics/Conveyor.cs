@@ -4,8 +4,8 @@ using System.Collections.Generic;
 public class Conveyor : MonoBehaviour
 {
     [Header("Settings")]
-    public float moveSpeed = ConveyorConfig.DefaultMoveSpeed;
-    public int maxItems = ConveyorConfig.MaxItemsPerBelt;
+    public float moveSpeed = LogisticsConfig.DefaultMoveSpeed;
+    public int maxItems = LogisticsConfig.MaxItemsPerBelt;
 
     [Header("Belt Level")]
     [Range(1, 5)]
@@ -42,13 +42,13 @@ public class Conveyor : MonoBehaviour
     void Awake()
     {
         cachedTransform = transform;
-        moveSpeed = ConveyorConfig.DefaultMoveSpeed;
-        maxItems  = ConveyorConfig.MaxItemsPerBelt;
+        moveSpeed = LogisticsConfig.DefaultMoveSpeed;
+        maxItems  = LogisticsConfig.MaxItemsPerBelt;
 
         // Cache the real travel distance of this piece
         pathLength = isCorner 
-            ? ConveyorConfig.CornerPathLength 
-            : ConveyorConfig.StraightPathLength;
+            ? LogisticsConfig.CornerPathLength 
+            : LogisticsConfig.StraightPathLength;
     }
 
     void OnEnable()
@@ -127,7 +127,7 @@ public class Conveyor : MonoBehaviour
     // Package size 0.22 on a 1.0 belt → roughly 0.28–0.30 is safe
     const float minGap = 0.30f;
 
-    float[] preferredSlots = ConveyorConfig.GetSlotProgresses(); // 0.20, 0.50, 0.80
+    float[] preferredSlots = LogisticsConfig.GetSlotProgresses(); // 0.20, 0.50, 0.80
     float targetProgress = -1f;
 
     // First try the preferred middle slots
@@ -324,22 +324,22 @@ private bool IsSlotFree(float progress, float minGap)
 
     private void GetStraightPosition(float t, out Vector3 pos, out Quaternion rot)
     {
-        float y = ConveyorConfig.HalfHeight + ConveyorConfig.PackageHalfSize + 0.001f;
-        float z = Mathf.Lerp(-ConveyorConfig.HalfLength, ConveyorConfig.HalfLength, t);
+        float y = LogisticsConfig.HalfBeltHeight + LogisticsConfig.PackageHalfSize + 0.001f;
+        float z = Mathf.Lerp(-LogisticsConfig.HalfBeltLength, LogisticsConfig.HalfBeltLength, t);
         pos = new Vector3(0f, y, z);
         rot = Quaternion.identity;
     }
 
     private void GetCornerPosition(float t, out Vector3 pos, out Quaternion rot)
     {
-        float radius = (ConveyorConfig.CornerInnerRadius + ConveyorConfig.CornerOuterRadius) * 0.5f;
-        Vector3 centre = ConveyorConfig.CornerCentreOffset;
+        float radius = (LogisticsConfig.CornerInnerRadius + LogisticsConfig.CornerOuterRadius) * 0.5f;
+        Vector3 centre = LogisticsConfig.CornerCentreOffset;
 
         float angle = Mathf.Lerp(180f, 90f, t) * Mathf.Deg2Rad;
 
         float x = centre.x + Mathf.Cos(angle) * radius;
         float z = centre.z + Mathf.Sin(angle) * radius;
-        float y = ConveyorConfig.HalfHeight + ConveyorConfig.PackageHalfSize + 0.001f;
+        float y = LogisticsConfig.HalfBeltHeight + LogisticsConfig.PackageHalfSize + 0.001f;
 
         pos = new Vector3(x, y, z);
 

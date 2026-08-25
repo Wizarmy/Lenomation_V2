@@ -9,7 +9,7 @@ public static class ConveyorArrowHelper
         var positions = new List<Vector3>();
 
         float y = 0;
-        float spacing = ConveyorConfig.ArrowSpacing;
+        float spacing = LogisticsConfig.ArrowSpacing;
         float totalWidth = (level - 1) * spacing;
         float startZ = -totalWidth * 0.5f;
 
@@ -26,8 +26,8 @@ public static class ConveyorArrowHelper
     {
         level = Mathf.Clamp(level, 1, 5);
 
-        float outerRadius = ConveyorConfig.CornerOuterRadius;
-        Vector3 centreOffset = ConveyorConfig.CornerCentreOffset;
+        float outerRadius = LogisticsConfig.CornerOuterRadius;
+        Vector3 centreOffset = LogisticsConfig.CornerCentreOffset;
         float angleGap = 10f;
 
         // How far the group of arrows is shifted so it stays centred

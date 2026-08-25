@@ -7,6 +7,9 @@ public class PrefabManager : MonoBehaviour
 {
     public static PrefabManager Instance { get; private set; }
 
+    [Header("Ground")]
+    public GameObject groundPrefab;
+    
     [Header("Conveyors")]
     public GameObject[] straightPrefabs = new GameObject[5];
     public GameObject[] cornerPrefabs   = new GameObject[5];
@@ -35,16 +38,31 @@ public class PrefabManager : MonoBehaviour
 
     public void LoadAllPrefabs()
     {
-        straightPrefabs = LoadLevelPrefabs(ConveyorConfig.StraightFolder, "StraightConveyor_L");
-        cornerPrefabs   = LoadLevelPrefabs(ConveyorConfig.CornerFolder,   "CornerConveyor_L");
-        endCapPrefabs   = LoadLevelPrefabs(ConveyorConfig.EndCapFolder,   "EndCapConveyor_L");
-        inserterPrefabs = LoadLevelPrefabs(ConveyorConfig.InserterFolder, "Inserter_L");
+        straightPrefabs = LoadLevelPrefabs(LogisticsConfig.StraightFolder, "StraightConveyor_L");
+        cornerPrefabs   = LoadLevelPrefabs(LogisticsConfig.CornerFolder,   "CornerConveyor_L");
+        endCapPrefabs   = LoadLevelPrefabs(LogisticsConfig.EndCapFolder,   "EndCapConveyor_L");
+        inserterPrefabs = LoadLevelPrefabs(LogisticsConfig.InserterFolder, "Inserter_L");
 
-        packagePrefab = LoadSingle(ConveyorConfig.ItemFolder + "Package.prefab",
-                                   "Prefabs/Logistics/Items/Package");
+        packagePrefab = LoadSingle(
+            LogisticsConfig.ItemFolder + "Package.prefab",
+            "Prefabs/Logistics/Items/Package");
 
-        chestPrefab = LoadSingle(ConveyorConfig.ContainerFolder + "Chest.prefab",
-                                 "Prefabs/Logistics/Containers/Chest");
+        // Default test chest = 3×3 ports (4×4 tiles)
+        chestPrefab = LoadSingle(
+            LogisticsConfig.ContainerFolder + "Chest_3x3.prefab",
+            "Prefabs/Logistics/Containers/Chest_3x3");
+    }
+
+// Optional helper for other sizes later
+    public GameObject GetChest(int portsX, int portsZ)
+    {
+        string name = $"Chest_{portsX}x{portsZ}";
+#if UNITY_EDITOR
+        return AssetDatabase.LoadAssetAtPath<GameObject>(
+            $"{LogisticsConfig.ContainerFolder}{name}.prefab");
+#else
+    return Resources.Load<GameObject>($"Prefabs/Logistics/Containers/{name}");
+#endif
     }
 
     // ------------------------------------------------------------------

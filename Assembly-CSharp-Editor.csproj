@@ -56,6 +56,7 @@
   <ItemGroup>
     <Compile Include="Assets\Editor\ItemDataCreator.cs" />
     <Compile Include="Assets\Editor\ItemPrefabCreator.cs" />
+    <Compile Include="Assets\Editor\GroundPrefabCreator.cs" />
     <Compile Include="Assets\Editor\CreateAllBaseMachines.cs" />
     <Compile Include="Assets\Editor\InserterPrefabCreator.cs" />
     <Compile Include="Assets\Editor\TechNodeCreator.cs" />

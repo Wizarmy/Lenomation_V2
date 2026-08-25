@@ -4,9 +4,9 @@ using UnityEditor;
 
 public static class LogisticsPrefabUtility
 {
-    public const string ArrowPrefabPath = ConveyorConfig.ArrowFolder + "StraightArrow.prefab";
-    public const string ArrowMeshPath   = ConveyorConfig.ArrowFolder + "StraightArrowMesh.asset";
-    public const string ArrowMatPath    = ConveyorConfig.MaterialFolder + "ConveyorArrow.mat";
+    public const string ArrowPrefabPath = LogisticsConfig.ArrowFolder + "StraightArrow.prefab";
+    public const string ArrowMeshPath   = LogisticsConfig.ArrowFolder + "StraightArrowMesh.asset";
+    public const string ArrowMatPath    = LogisticsConfig.MaterialFolder + "ConveyorArrow.mat";
 
     public static GameObject EnsureArrowPrefab()
     {
@@ -16,7 +16,7 @@ public static class LogisticsPrefabUtility
 
         EnsureAllFolders();
 
-        Material arrowMat = GetOrCreateMaterial("ConveyorArrow", ConveyorConfig.ArrowColor);
+        Material arrowMat = GetOrCreateMaterial("ConveyorArrow", LogisticsConfig.ArrowColor);
 
         Mesh arrowMesh = CreateStraightArrowMesh();
         AssetDatabase.CreateAsset(arrowMesh, ArrowMeshPath);
@@ -55,14 +55,14 @@ public static class LogisticsPrefabUtility
     {
         CreateFolder("Assets/Prefabs");
         CreateFolder("Assets/Prefabs/Logistics");
-        CreateFolder(ConveyorConfig.ArrowFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.ConveyorFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.StraightFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.CornerFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.EndCapFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.ContainerFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.InserterFolder.TrimEnd('/'));
-        CreateFolder(ConveyorConfig.ItemFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.ArrowFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.ConveyorFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.StraightFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.CornerFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.EndCapFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.ContainerFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.InserterFolder.TrimEnd('/'));
+        CreateFolder(LogisticsConfig.ItemFolder.TrimEnd('/'));
         CreateFolder("Assets/Materials");
     }
     
@@ -87,7 +87,7 @@ public static class LogisticsPrefabUtility
 
     public static Material GetOrCreateMaterial(string name, Color color)
     {
-        string path = $"{ConveyorConfig.MaterialFolder}{name}.mat";
+        string path = $"{LogisticsConfig.MaterialFolder}{name}.mat";
         Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
 
         if (mat == null)
@@ -107,8 +107,8 @@ public static class LogisticsPrefabUtility
 
     private static Mesh CreateStraightArrowMesh()
     {
-        float size  = ConveyorConfig.ArrowSize;
-        float depth = ConveyorConfig.ArrowDepth;
+        float size  = LogisticsConfig.ArrowSize;
+        float depth = LogisticsConfig.ArrowDepth;
         float halfD = depth * 0.5f;
 
         Vector3[] verts = {

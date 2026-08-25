@@ -34,6 +34,7 @@ public class Spawner : MonoBehaviour
     // -------------------------------------------------
     public void SpawnEverything(Vector3 loopOrigin, float loopYRotation = 0f)
     {
+        SpawnGround();
         SpawnBeltLoop(loopOrigin, loopYRotation);
 
         if (spawnTestChest)
@@ -61,6 +62,22 @@ public class Spawner : MonoBehaviour
             if (t && t.name.Contains("EndCapConveyor"))
                 DestroyImmediate(t.gameObject);
         }
+    }
+    
+    public void SpawnGround()
+    {
+        if (PrefabManager.Instance == null || PrefabManager.Instance.groundPrefab == null)
+            return;
+
+        // Avoid duplicates
+        if (GameObject.Find("Ground") != null)
+            return;
+
+        GameObject go = Instantiate(
+            PrefabManager.Instance.groundPrefab,
+            Vector3.zero,
+            Quaternion.identity);
+        go.name = "Ground";
     }
 
     // -------------------------------------------------
@@ -112,16 +129,16 @@ public class Spawner : MonoBehaviour
             conv.SetDirection(loopDirection);
     }
 
-    // -------------------------------------------------
-    // Individual spawners (now with position + rotation)
-    // -------------------------------------------------
-    public GameObject SpawnChest(Vector3 position, float yRotation = 0f)
+    public GameObject SpawnChest(Vector3 position, float yRotation = 0f, int portsX = 3, int portsZ = 3)
     {
-        if (PrefabManager.Instance == null || PrefabManager.Instance.chestPrefab == null)
-            return null;
+        if (PrefabManager.Instance == null) return null;
 
-        GameObject chest = Instantiate(PrefabManager.Instance.chestPrefab, position, Quaternion.Euler(0f, yRotation, 0f));
-        chest.name = "Chest";
+        GameObject prefab = PrefabManager.Instance.GetChest(portsX, portsZ)
+                            ?? PrefabManager.Instance.chestPrefab;
+        if (prefab == null) return null;
+
+        GameObject chest = Instantiate(prefab, position, Quaternion.Euler(0f, yRotation, 0f));
+        chest.name = prefab.name;
         return chest;
     }
 
@@ -170,8 +187,8 @@ public class Spawner : MonoBehaviour
 
         ConnectionPoint source = null;
         ConnectionPoint dest   = null;
-        float bestSrcDist = 1.6f;
-        float bestDstDist = 1.6f;
+        float bestSrcDist = InserterConfig.MaxLinkDistance;
+        float bestDstDist = InserterConfig.MaxLinkDistance;
 
         foreach (var cp in FindObjectsByType<ConnectionPoint>())
         {
@@ -200,5 +217,8 @@ public class Spawner : MonoBehaviour
     {
         foreach (var obj in FindObjectsByType<T>())
             if (obj) DestroyImmediate(obj.gameObject);
+        var ground = GameObject.Find("Ground");
+        if (ground != null)
+            DestroyImmediate(ground);
     }
 }

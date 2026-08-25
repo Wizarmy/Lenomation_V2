@@ -9,14 +9,14 @@ public class ItemPrefabCreator
     {
         LogisticsPrefabUtility.EnsureAllFolders();
 
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.ItemFolder}Package.prefab");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.ItemFolder}PackageMesh.asset");
-        LogisticsPrefabUtility.DeleteIfExists($"{ConveyorConfig.MaterialFolder}Package.mat");
+        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.ItemFolder}Package.prefab");
+        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.ItemFolder}PackageMesh.asset");
+        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.MaterialFolder}Package.mat");
 
         Material packageMat = LogisticsPrefabUtility.GetOrCreateMaterial("Package", new Color(0.45f, 0.45f, 0.48f));
 
         Mesh packageMesh = CreatePackageCubeMesh();
-        AssetDatabase.CreateAsset(packageMesh, $"{ConveyorConfig.ItemFolder}PackageMesh.asset");
+        AssetDatabase.CreateAsset(packageMesh, $"{LogisticsConfig.ItemFolder}PackageMesh.asset");
 
         CreatePackagePrefab(packageMesh, packageMat);
 
@@ -31,7 +31,7 @@ public class ItemPrefabCreator
     // ------------------------------------------------------------------
     private static void CreatePackagePrefab(Mesh mesh, Material mat)
     {
-        string path = $"{ConveyorConfig.ItemFolder}Package.prefab";
+        string path = $"{LogisticsConfig.ItemFolder}Package.prefab";
 
         GameObject root = new GameObject("Package");
 
@@ -51,12 +51,12 @@ public class ItemPrefabCreator
         iconGO.transform.SetParent(root.transform, false);
 
         // Sit just above the top face of the cube
-        float y = ConveyorConfig.PackageHalfSize + ConveyorConfig.PackageIconHeight;
+        float y = LogisticsConfig.PackageHalfSize + LogisticsConfig.PackageIconHeight;
         iconGO.transform.localPosition = new Vector3(0f, y, 0f);
 
         // Flat on the top (or rotate later if you prefer billboard)
         iconGO.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        iconGO.transform.localScale = Vector3.one * ConveyorConfig.PackageIconScale;
+        iconGO.transform.localScale = Vector3.one * LogisticsConfig.PackageIconScale;
 
         var sr = iconGO.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 10;          // Draw above most things
@@ -76,7 +76,7 @@ public class ItemPrefabCreator
     // ------------------------------------------------------------------
     private static Mesh CreatePackageCubeMesh()
     {
-        float h = ConveyorConfig.PackageHalfSize;
+        float h = LogisticsConfig.PackageHalfSize;
 
         Vector3[] vertices = {
             // Bottom
@@ -89,17 +89,17 @@ public class ItemPrefabCreator
 
         int[] triangles = {
             // Bottom
-            0, 2, 1, 0, 3, 2,
+            0, 1, 2, 0, 2, 3,
             // Top
-            4, 5, 6, 4, 6, 7,
+            4, 6, 5, 4, 7, 6,
             // Front
-            3, 6, 2, 3, 7, 6,
+            3, 2, 6, 3, 6, 7,
             // Back
-            0, 1, 5, 0, 5, 4,
+            0, 5, 1, 0, 4, 5,
             // Left
-            0, 4, 7, 0, 7, 3,
+            0, 7, 4, 0, 3, 7,
             // Right
-            1, 2, 6, 1, 6, 5
+            1, 6, 2, 1, 5, 6
         };
 
         Mesh mesh = new Mesh { name = "PackageMesh" };
