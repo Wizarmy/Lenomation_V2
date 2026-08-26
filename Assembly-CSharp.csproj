@@ -58,6 +58,8 @@
     <Compile Include="Assets\Scripts\Configs\ConveyorConfig.cs" />
     <Compile Include="Assets\Scripts\Configs\GridConfig.cs" />
     <Compile Include="Assets\Scripts\Core\PrefabManager.cs" />
+    <Compile Include="Assets\Scripts\Utlity\VertexDebug.cs" />
+    <Compile Include="Assets\Scripts\Logistics\ConveyorPieceType.cs" />
     <Compile Include="Assets\Scripts\Configs\PathingConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\Conveyor.cs" />
     <Compile Include="Assets\Scripts\Core\Placeable.cs" />

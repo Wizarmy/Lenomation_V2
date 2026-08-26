@@ -16,7 +16,7 @@ public static class ConveyorConfig
     public static float HalfBeltHeight => BeltHeight * 0.5f;
     public static float HalfBeltLength => BeltLength * 0.5f;
     
-    public const float EndCapLength = 7f / 16f;
+    public const float EndCapArcCurve = 3f / 32f;
     
     public static float StraightPathLength => BeltLength;
     
@@ -33,7 +33,7 @@ public static class ConveyorConfig
     public static readonly Color TopColor    = new Color(0.22f, 0.22f, 0.25f);
     public static readonly Color BottomColor = new Color(0.08f, 0.08f, 0.09f);
     public static readonly Color SideColor   = new Color(0.35f, 0.35f, 0.38f);
-    public static readonly Color EndCapColor = new Color(1f, 0.5f, 0.5f);
+    public static readonly Color EndCapColor = new Color(1f, 0.2f, 0.2f);
     public static readonly Color ArrowColor  = Color.white;
     
     public const float ArrowSpacing = 0.09f;

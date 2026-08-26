@@ -432,6 +432,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridOverlay
   showGrid: 1
+  showLabels: 0
 --- !u!4 &628106989
 Transform:
   m_ObjectHideFlags: 0

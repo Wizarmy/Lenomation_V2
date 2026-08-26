@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -124,6 +125,99 @@ public class VisualsUtility : MonoBehaviour
         mesh.RecalculateBounds();
         return mesh;
     }
+    
+public static Mesh CreateEndCapMeshEllipse(string name)
+{
+    float height     = ConveyorConfig.BeltHeight;
+    float curveMax = ConveyorConfig.EndCapArcCurve;
+    float a          = 0.5f;
+    int   segments   = Mathf.Max(4, ConveyorConfig.CurveSegments);
+
+    const float ox = 0.5f;
+    const float oz = 0.5f;
+
+    // ------------------------------------------------------------------
+    // Ellipse XZ samples (y = 0), tile-centred — computed once
+    // ------------------------------------------------------------------
+    var ellipseXZ = new List<Vector3>(segments + 1);
+    for (int i = 0; i <= segments; i++)
+    {
+        float t     = i / (float)segments;
+        float angle = Mathf.Lerp(-Mathf.PI * 0.5f, Mathf.PI * 0.5f, t);
+
+        float x = curveMax * Mathf.Cos(angle);
+        float z = 0.5f + a * Mathf.Sin(angle);
+        ellipseXZ.Add(new Vector3(x - ox, 0f, z - oz));
+    }
+
+    Vector3 WithY(Vector3 xz, float y) => new Vector3(xz.x, y, xz.z);
+
+    var verts      = new List<Vector3>();
+    var topTris    = new List<int>();
+    var bottomTris = new List<int>();
+    var sideTris   = new List<int>();
+
+    // ------------------------------------------------------------------
+    // Vertices from shared XZ list
+    // ------------------------------------------------------------------
+    int bottomArcStart = verts.Count;
+    foreach (var p in ellipseXZ)
+        verts.Add(WithY(p, 0f));
+
+    int bottomCentre = verts.Count;
+    verts.Add(new Vector3(0f - ox, 0f, 0.5f - oz));
+
+    int topArcStart = verts.Count;
+    foreach (var p in ellipseXZ)
+        verts.Add(WithY(p, height));
+
+    int topCentre = verts.Count;
+    verts.Add(new Vector3(0f - ox, height, 0.5f - oz));
+    
+    // ------------------------------------------------------------------
+    // Top deck fan
+    // ------------------------------------------------------------------
+    for (int i = 0; i < segments; i++)
+    {
+        topTris.Add(topCentre);
+        topTris.Add(topArcStart + i + 1);
+        topTris.Add(topArcStart + i);
+    }
+
+    // ------------------------------------------------------------------
+    // Bottom fan
+    // ------------------------------------------------------------------
+    for (int i = 0; i < segments; i++)
+    {
+        bottomTris.Add(bottomCentre);
+        bottomTris.Add(bottomArcStart + i);
+        bottomTris.Add(bottomArcStart + i + 1);
+    }
+
+    // ------------------------------------------------------------------
+    // Curved wall (bottom → deck)
+    // ------------------------------------------------------------------
+    for (int i = 0; i < segments; i++)
+    {
+        int b0 = bottomArcStart + i;
+        int b1 = bottomArcStart + i + 1;
+        int t0 = topArcStart + i;
+        int t1 = topArcStart + i + 1;
+
+        sideTris.Add(b0); sideTris.Add(t0); sideTris.Add(t1);
+        sideTris.Add(b0); sideTris.Add(t1); sideTris.Add(b1);
+    }
+    
+    var mesh = new Mesh { name = name };
+    mesh.SetVertices(verts);
+    mesh.subMeshCount = 3;
+    mesh.SetTriangles(topTris, 0);
+    mesh.SetTriangles(bottomTris, 1);
+    mesh.SetTriangles(sideTris, 2);
+    mesh.RecalculateNormals();
+    mesh.RecalculateBounds();
+    return mesh;
+}
     
     
 }
