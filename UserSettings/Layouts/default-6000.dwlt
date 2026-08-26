@@ -121,7 +121,7 @@ MonoBehaviour:
   m_MinSize: {x: 400, y: 112}
   m_MaxSize: {x: 32384, y: 16192}
   vertical: 0
-  controlID: 57
+  controlID: 29
   draggingID: 0
 --- !u!114 &6
 MonoBehaviour:
@@ -147,7 +147,7 @@ MonoBehaviour:
   m_MinSize: {x: 100, y: 112}
   m_MaxSize: {x: 8096, y: 16192}
   vertical: 1
-  controlID: 58
+  controlID: 30
   draggingID: 0
 --- !u!114 &7
 MonoBehaviour:
@@ -168,8 +168,8 @@ MonoBehaviour:
     y: 0
     width: 906
     height: 569
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 201, y: 226}
+  m_MaxSize: {x: 4001, y: 4026}
   m_ActualView: {fileID: 14}
   m_Panes:
   - {fileID: 14}
@@ -194,8 +194,8 @@ MonoBehaviour:
     y: 569
     width: 906
     height: 475
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 201, y: 226}
+  m_MaxSize: {x: 4001, y: 4026}
   m_ActualView: {fileID: 15}
   m_Panes:
   - {fileID: 15}
@@ -220,8 +220,8 @@ MonoBehaviour:
     y: 0
     width: 308
     height: 1044
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 202, y: 226}
+  m_MaxSize: {x: 4002, y: 4026}
   m_ActualView: {fileID: 16}
   m_Panes:
   - {fileID: 16}
@@ -273,8 +273,8 @@ MonoBehaviour:
     y: 0
     width: 447
     height: 1044
-  m_MinSize: {x: 275, y: 50}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 276, y: 76}
+  m_MaxSize: {x: 4001, y: 4026}
   m_ActualView: {fileID: 18}
   m_Panes:
   - {fileID: 18}
@@ -1018,9 +1018,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 20.197378, y: 75.56524, z: 17.081917}
+    m_Target: {x: 0.99326724, y: 1.2153068, z: -1.5256526}
     speed: 2
-    m_Value: {x: 20.197378, y: 75.56524, z: 17.081917}
+    m_Value: {x: 0.62921244, y: 0.8340361, z: 0.31045213}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1067,13 +1067,13 @@ MonoBehaviour:
     m_gridOpacity: 0.5
     m_NearestPlaneToHandleMode: 0
   m_Rotation:
-    m_Target: {x: -0.13812774, y: 0.7783505, z: -0.5841384, w: -0.18405166}
+    m_Target: {x: -0.1962524, y: 0.22053733, z: -0.0453493, w: -0.9543598}
     speed: 2
-    m_Value: {x: -0.13812764, y: 0.77834994, z: -0.584138, w: -0.18405153}
+    m_Value: {x: -0.16905852, y: 0.83091056, z: -0.37887174, w: -0.37076023}
   m_Size:
-    m_Target: 10
+    m_Target: 0.03434476
     speed: 2
-    m_Value: 10
+    m_Value: 0.71459776
   m_Ortho:
     m_Target: 0
     speed: 2
@@ -1261,11 +1261,13 @@ MonoBehaviour:
       m_LastClickedID:
         m_rawData: 0
       m_ExpandedIDs:
-      - m_rawData: 568105589213657664
+      - m_rawData: 568105589213748860
+      - m_rawData: 568105589213755102
+      - m_rawData: 568105589213755970
       m_RenameOverlay:
         m_UserAcceptedRename: 0
-        m_Name: 
-        m_OriginalName: 
+        m_Name: StraightConveyor_L1
+        m_OriginalName: StraightConveyor_L1
         m_EditFieldRect:
           serializedVersion: 2
           x: 0
@@ -1273,10 +1275,10 @@ MonoBehaviour:
           width: 0
           height: 0
         m_UserData:
-          m_rawData: 0
+          m_rawData: 568105589213753042
         m_IsWaitingForDelay: 0
         m_IsRenaming: 0
-        m_OriginalEventType: 11
+        m_OriginalEventType: 0
         m_IsRenamingFilename: 0
         m_TrimLeadingAndTrailingWhitespace: 0
         m_ClientGUIView: {fileID: 9}
@@ -1338,7 +1340,8 @@ MonoBehaviour:
     m_ShowAllHits: 0
     m_SkipHidden: 0
     m_SearchArea: 1
-    m_Folders: []
+    m_Folders:
+    - Assets/Prefabs/Logistics/Conveyors/Straight
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1358,7 +1361,21 @@ MonoBehaviour:
     m_SelectedIDs: []
     m_LastClickedID:
       m_rawData: 0
-    m_ExpandedIDs: []
+    m_ExpandedIDs:
+    - m_rawData: 0
+    - m_rawData: 568105584918853268
+    - m_rawData: 568105584918856902
+    - m_rawData: 568105584918856904
+    - m_rawData: 568105584918856906
+    - m_rawData: 568105584918856908
+    - m_rawData: 568105584918856910
+    - m_rawData: 568105584918856912
+    - m_rawData: 568105584918856914
+    - m_rawData: 568105584918856916
+    - m_rawData: 568105584918856918
+    - m_rawData: 568105584918856920
+    - m_rawData: 568105584918856922
+    - m_rawData: 568105584918856924
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1392,21 +1409,23 @@ MonoBehaviour:
       m_rawData: 0
     m_ExpandedIDs:
     - m_rawData: 0
-    - m_rawData: 568105584918856948
-    - m_rawData: 568105584918880528
-    - m_rawData: 568105584918880692
-    - m_rawData: 568105584918880700
-    - m_rawData: 568105584918880704
-    - m_rawData: 568105584918880774
-    - m_rawData: 568105584918880836
-    - m_rawData: 568105584918880936
-    - m_rawData: 568105584918880940
-    - m_rawData: 568105584918880948
-    - m_rawData: 568105584918880976
+    - m_rawData: 568105584918853268
+    - m_rawData: 568105584918856902
+    - m_rawData: 568105584918856904
+    - m_rawData: 568105584918856906
+    - m_rawData: 568105584918856908
+    - m_rawData: 568105584918856910
+    - m_rawData: 568105584918856912
+    - m_rawData: 568105584918856914
+    - m_rawData: 568105584918856916
+    - m_rawData: 568105584918856918
+    - m_rawData: 568105584918856920
+    - m_rawData: 568105584918856922
+    - m_rawData: 568105584918856924
     m_RenameOverlay:
       m_UserAcceptedRename: 0
-      m_Name: GridConfig
-      m_OriginalName: GridConfig
+      m_Name: 
+      m_OriginalName: 
       m_EditFieldRect:
         serializedVersion: 2
         x: 0
@@ -1414,10 +1433,10 @@ MonoBehaviour:
         width: 0
         height: 0
       m_UserData:
-        m_rawData: 568105584918881200
+        m_rawData: 0
       m_IsWaitingForDelay: 0
       m_IsRenaming: 0
-      m_OriginalEventType: 0
+      m_OriginalEventType: 11
       m_IsRenamingFilename: 1
       m_TrimLeadingAndTrailingWhitespace: 0
       m_ClientGUIView: {fileID: 10}

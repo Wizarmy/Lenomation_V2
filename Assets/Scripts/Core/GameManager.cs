@@ -12,6 +12,7 @@ public class GameManager : MonoBehaviour
             gameObject.AddComponent<PrefabManager>();
         
         SpawnGround();
+        SpawnStraightBelt(new Vector2(0,0));
     }
     
     public void SpawnGround()
@@ -28,6 +29,19 @@ public class GameManager : MonoBehaviour
             new Vector3(0f, GroundConfig.GroundY, 0f),
             Quaternion.identity);
         go.name = "Ground";
+    }
+
+    void SpawnStraightBelt(Vector3 position, int beltLevel =1, float yRot =0f)
+    {
+        GameObject straightPrefab = PrefabManager.GetStraight(beltLevel);
+        
+        GameObject go = Instantiate(straightPrefab, position, Quaternion.Euler(0f, yRot, 0f));
+        go.name = straightPrefab.name;
+
+        var conv = go.GetComponent<Conveyor>();
+        if (conv != null)
+            conv.SetDirection(BeltDirection.AntiClockwise);
+        conv.SetGridPosition(position);
     }
 
 }

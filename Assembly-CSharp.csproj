@@ -55,10 +55,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\Utlity\VisualsUtility.cs" />
+    <Compile Include="Assets\Scripts\Configs\ConveyorConfig.cs" />
     <Compile Include="Assets\Scripts\Configs\GridConfig.cs" />
     <Compile Include="Assets\Scripts\Core\PrefabManager.cs" />
     <Compile Include="Assets\Scripts\Configs\PathingConfig.cs" />
+    <Compile Include="Assets\Scripts\Logistics\Conveyor.cs" />
+    <Compile Include="Assets\Scripts\Core\Placeable.cs" />
+    <Compile Include="Assets\Scripts\Core\ConveyorManager.cs" />
     <Compile Include="Assets\Scripts\Configs\GroundConfig.cs" />
+    <Compile Include="Assets\Scripts\Configs\ArrowConfig.cs" />
+    <Compile Include="Assets\Scripts\Logistics\ArrowPlacement.cs" />
     <Compile Include="Assets\Scripts\Configs\CoreConfig.cs" />
     <Compile Include="Assets\Scripts\Core\GameManager.cs" />
     <Compile Include="Assets\Scripts\Core\CameraController.cs" />
