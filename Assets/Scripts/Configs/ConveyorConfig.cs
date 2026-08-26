@@ -37,5 +37,6 @@ public static class ConveyorConfig
     public static readonly Color ArrowColor  = Color.white;
     
     public const float ArrowSpacing = 0.09f;
+    public static float BeltPlacementY => GroundConfig.GroundY + HalfBeltHeight;
     
 }
