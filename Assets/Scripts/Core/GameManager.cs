@@ -1,38 +1,33 @@
+using System;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class GameManager : MonoBehaviour
 {
     [Header("Debug")]
     public bool clearExistingOnStart = true;
 
-    void Start()
+    private void Start()
     {
-        // Ensure core managers exist
-        if (ConveyorManager.Instance == null)
-            gameObject.AddComponent<ConveyorManager>();
-
         if (PrefabManager.Instance == null)
             gameObject.AddComponent<PrefabManager>();
-
-        if (Spawner.Instance == null)
-            gameObject.AddComponent<Spawner>();
-
-        if (clearExistingOnStart)
-            Spawner.Instance.ClearEverything();
-
-        Spawner.Instance.SpawnEverything(loopOrigin: Vector3.zero, loopYRotation: 0f);
+        
+        SpawnGround();
     }
-
-    void Update()
+    
+    public void SpawnGround()
     {
-        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
-        {
-            if (ConveyorManager.Instance != null)
-            {
-                ConveyorManager.Instance.isRunning = !ConveyorManager.Instance.isRunning;
-                Debug.Log(ConveyorManager.Instance.isRunning ? "Conveyors STARTED" : "Conveyors STOPPED");
-            }
-        }
+        if (PrefabManager.Instance == null || PrefabManager.Instance.groundPrefab == null)
+            return;
+
+        // Avoid duplicates
+        if (GameObject.Find("Ground") != null)
+            return;
+
+        var go = Instantiate(
+            PrefabManager.Instance.groundPrefab,
+            new Vector3(0f, GroundConfig.GroundY, 0f),
+            Quaternion.identity);
+        go.name = "Ground";
     }
+
 }

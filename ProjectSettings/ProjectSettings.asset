@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 29
-  productGUID: 8e7375077c7d6ed489e08d0c406dd2f5
+  productGUID: a56d578cae808794b840954f198d8c38
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: Lenomation_V2
+  productName: Lenomation_V3
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -852,14 +852,14 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: Lenomation_V2
+  metroPackageName: Lenomation_V3
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: Lenomation_V2
+  metroApplicationDescription: Lenomation_V3
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -930,10 +930,10 @@ PlayerSettings:
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: d4bd3705-ef66-4a7f-a957-26420a1623b4
+  cloudProjectId: 0956883a-88ea-49b2-bde1-fe810ba60755
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Lenomation_V2
+  projectName: Lenomation_V3
   organizationId: wizarmy
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0

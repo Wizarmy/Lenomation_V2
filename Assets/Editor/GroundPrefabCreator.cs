@@ -7,19 +7,23 @@ public static class GroundPrefabCreator
     [MenuItem("Automation/Create Ground Prefab")]
     public static void CreateGroundPrefab()
     {
-        LogisticsPrefabUtility.EnsureAllFolders();
+        PathingUtility.EnsureAllFolders();
         // Ensure the Ground subfolder exists
-        if (!AssetDatabase.IsValidFolder(LogisticsConfig.GroundFolder.TrimEnd('/')))
-            AssetDatabase.CreateFolder(LogisticsConfig.PrefabFolder.TrimEnd('/'), "Ground");
+        if (!AssetDatabase.IsValidFolder(PathingConfig.GroundFolder.TrimEnd('/')))
+            AssetDatabase.CreateFolder(PathingConfig.PrefabFolder.TrimEnd('/'), "Ground");
 
-        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.GroundFolder}Ground.prefab");
-        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.GroundFolder}GroundMesh.asset");
-        LogisticsPrefabUtility.DeleteIfExists($"{LogisticsConfig.MaterialFolder}Ground.mat");
+        PathingUtility.DeleteIfExists($"{PathingConfig.GroundFolder}Ground.prefab");
+        PathingUtility.DeleteIfExists($"{PathingConfig.GroundFolder}GroundMesh.asset");
+        PathingUtility.DeleteIfExists($"{PathingConfig.MaterialFolder}Ground.mat");
 
-        Material mat = LogisticsPrefabUtility.GetOrCreateMaterial("Ground", LogisticsConfig.GroundColor);
+        Material mat = VisualsUtility.GetOrCreateMaterial("Ground", GroundConfig.GroundColor);
 
-        Mesh mesh = CreateGroundMesh();
-        AssetDatabase.CreateAsset(mesh, $"{LogisticsConfig.GroundFolder}GroundMesh.asset");
+        Mesh mesh = VisualsUtility.CreateQuadMesh(
+            GroundConfig.GroundSize,
+            GroundConfig.GroundSize,
+            GroundConfig.GroundY,
+            "GroundMesh");
+        AssetDatabase.CreateAsset(mesh, $"{PathingConfig.GroundFolder}GroundMesh.asset");
 
         GameObject root = new GameObject("Ground");
         var mf = root.AddComponent<MeshFilter>();
@@ -31,11 +35,8 @@ public static class GroundPrefabCreator
         // Simple collider so raycasts / placement can hit it later
         var col = root.AddComponent<MeshCollider>();
         col.sharedMesh = mesh;
-
-        // Optional: tag it for easy finding
-        root.tag = "Ground";          // create the tag in Project Settings if needed
-
-        string path = $"{LogisticsConfig.GroundFolder}Ground.prefab";
+        
+        string path = $"{PathingConfig.GroundFolder}Ground.prefab";
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
 
@@ -43,36 +44,6 @@ public static class GroundPrefabCreator
         AssetDatabase.Refresh();
         Debug.Log("Ground prefab created successfully.");
     }
-
-    private static Mesh CreateGroundMesh()
-    {
-        float half = LogisticsConfig.GroundSize * 0.5f;
-        float y    = LogisticsConfig.GroundY;
-
-        // Single quad, centred on origin, top face at y = 0
-        Vector3[] verts = {
-            new Vector3(-half, y, -half),
-            new Vector3( half, y, -half),
-            new Vector3( half, y,  half),
-            new Vector3(-half, y,  half)
-        };
-
-        int[] tris = { 0, 2, 1, 0, 3, 2 };   // upward facing
-
-        Vector2[] uvs = {
-            new Vector2(0, 0),
-            new Vector2(1, 0),
-            new Vector2(1, 1),
-            new Vector2(0, 1)
-        };
-
-        Mesh mesh = new Mesh { name = "GroundMesh" };
-        mesh.vertices = verts;
-        mesh.triangles = tris;
-        mesh.uv = uvs;
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        return mesh;
-    }
+    
 }
 #endif
