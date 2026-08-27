@@ -18,6 +18,9 @@ public class ConveyorManager : MonoBehaviour
     const string EntryCapName = "EndCap_Entry";
     const string ExitCapName  = "EndCap_Exit";
     const string LinkName     = "ConveyorLink";
+    
+    const string LinkEntryName = "ConveyorLink_Entry";
+    const string LinkExitName  = "ConveyorLink_Exit";
 
     void Awake()
     {
@@ -213,46 +216,43 @@ public class ConveyorManager : MonoBehaviour
 
     void RefreshLink(Conveyor conv)
     {
-        // Corner exit is local +X — straight-link offset is local +Z only.
-        if (conv.isCorner)
-            return;
+        if (conv.isCorner) return;
 
-        bool needLink = conv.nextConveyor != null;
-        Transform existing = conv.transform.Find(LinkName);
+        SetHalfLink(conv, LinkExitName,  conv.nextConveyor     != null, exit: true);
+        SetHalfLink(conv, LinkEntryName, conv.previousConveyor != null, exit: false);
+    }
 
-        if (!needLink)
+    void SetHalfLink(Conveyor conv, string childName, bool needed, bool exit)
+    {
+        Transform existing = conv.transform.Find(childName);
+
+        if (!needed)
         {
             if (existing != null) Destroy(existing.gameObject);
             return;
         }
-
         if (existing != null) return;
 
         GameObject prefab = PrefabManager.Instance != null
             ? PrefabManager.Instance.GetLink()
             : null;
-        if (prefab == null)
-        {
-            Debug.LogError("[ConveyorManager] No LinkConveyor prefab.");
-            return;
-        }
+        if (prefab == null) return;
+
+        float alongZ = ConveyorConfig.HalfBeltLength + ConveyorConfig.LinkLength * 0.5f;
+        if (!exit) alongZ = -alongZ;
 
         var go = Instantiate(prefab, conv.transform);
-        go.name = LinkName;
-        go.transform.localPosition = new Vector3(
-            0f, 0f,
-            ConveyorConfig.HalfBeltLength + ConveyorConfig.LinkLength * 0.5f);
+        go.name = childName;
+        go.transform.localPosition = new Vector3(0f, 0f, alongZ);
         go.transform.localRotation = Quaternion.identity;
-        go.transform.localScale = Vector3.one;
+        go.transform.localScale    = Vector3.one;
 
         var link = go.GetComponent<Conveyor>();
         if (link != null)
         {
-            link.pieceType        = ConveyorPieceType.Link;
-            link.entryPoint       = null;
-            link.exitPoint        = null;
-            link.nextConveyor     = null;
-            link.previousConveyor = null;
+            link.pieceType = ConveyorPieceType.Link;
+            link.entryPoint = null;
+            link.exitPoint  = null;
         }
     }
 
@@ -263,9 +263,10 @@ public class ConveyorManager : MonoBehaviour
 
         Vector2Int fromCell = CellOf(from);
         Vector2Int toCell   = CellOf(to);
+        Vector2Int travel   = TravelDir(from);
 
-        if (toCell != fromCell + TravelDir(from)) return false;
-        if (IncomingDir(to) != TravelDir(from))   return false;
+        if (toCell != fromCell + travel) return false;
+        if (toCell + IncomingDir(to) != fromCell) return false;
 
         return true;
     }
@@ -368,7 +369,8 @@ public class ConveyorManager : MonoBehaviour
     {
         DestroyChild(conv, EntryCapName);
         DestroyChild(conv, ExitCapName);
-        DestroyChild(conv, LinkName);
+        DestroyChild(conv, LinkEntryName);
+        DestroyChild(conv, LinkExitName);
     }
 
     // ------------------------------------------------------------------

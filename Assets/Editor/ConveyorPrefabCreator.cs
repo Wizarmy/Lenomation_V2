@@ -61,6 +61,13 @@ public static void CreateConveyorPrefabs()
         new Vector3(0f, h * 0.5f, 0f),
         "LinkMesh");
     AssetDatabase.CreateAsset(linkMesh, linkMeshPath);
+    
+    string railPath = PathingConfig.CornerFolder + "CornerGuardRailMesh.asset";
+    var railMesh = VisualsUtility.CreateCornerGuardRailMesh();
+    AssetDatabase.CreateAsset(railMesh, railPath);
+    AssetDatabase.SaveAssets();
+    AssetDatabase.Refresh();
+    railMesh = AssetDatabase.LoadAssetAtPath<Mesh>(railPath);
 
     AssetDatabase.SaveAssets();
     AssetDatabase.Refresh();
@@ -73,7 +80,7 @@ public static void CreateConveyorPrefabs()
     for (int level = 1; level <= 5; level++)
         CreateStraightPrefab(level, straightMesh, top, bottom, side);
 
-    CreateCornerPrefab(cornerMesh, top, bottom, side);
+    CreateCornerPrefab(cornerMesh, railMesh, top, bottom, side);
     
     CreateEndCapPrefab(endCapMesh, top, bottom, capMat);
     CreateLinkPrefab(linkMesh, top, bottom, side);
@@ -118,11 +125,10 @@ public static void CreateConveyorPrefabs()
         Object.DestroyImmediate(root);
     }
     
-    static void CreateCornerPrefab(Mesh mesh, Material top, Material bottom, Material side)
+    static void CreateCornerPrefab(Mesh mesh, Mesh railMesh, Material top, Material bottom, Material side)
     {
         string path = PathingConfig.CornerFolder + "CornerConveyor.prefab";
         var root = CreateBase("CornerConveyor", mesh, new[] { top, bottom, side }, false);
-
         AddConveyorComponent(root, 1, ConveyorPieceType.Corner);
 
         float y = ConveyorConfig.BeltHeight;
@@ -140,12 +146,13 @@ public static void CreateConveyorPrefabs()
         conv.entryPoint = entry;
         conv.exitPoint  = exit;
 
-        // optional rail child — bake mesh asset the same way as endcap rail
         var railGo = new GameObject("GuardRail");
         railGo.transform.SetParent(root.transform, false);
         railGo.transform.localPosition = new Vector3(
-            0f, ConveyorConfig.BeltHeight + ConveyorConfig.GuardRailHeight * 0.5f, 0f);
-        railGo.AddComponent<MeshFilter>().sharedMesh = VisualsUtility.CreateCornerGuardRailMesh();
+            0f,
+            ConveyorConfig.BeltHeight + ConveyorConfig.GuardRailHeight * 0.5f,
+            0f);
+        railGo.AddComponent<MeshFilter>().sharedMesh = railMesh;
         railGo.AddComponent<MeshRenderer>().sharedMaterial =
             VisualsUtility.GetOrCreateMaterial("ConveyorGuardRail", ConveyorConfig.GuardRailColor);
 

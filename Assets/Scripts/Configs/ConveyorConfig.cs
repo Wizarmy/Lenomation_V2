@@ -16,7 +16,7 @@ public static class ConveyorConfig
     public static float HalfBeltHeight => BeltHeight * 0.5f;
     public static float HalfBeltLength => BeltLength * 0.5f;
     
-    public static float LinkLength => CoreConfig.TileSize - BeltLength;
+    public static float LinkLength => CoreConfig.DistanceFromTileEdge;
     
     // ConveyorConfig
     public const float GuardRailWidth  = 0.01f;
@@ -28,8 +28,8 @@ public static class ConveyorConfig
     public static float StraightPathLength => BeltLength;
     
     public const int CurveSegments = 24;
-    public static float CornerInnerRadius => 0.5f - (BeltWidth * 0.5f);
-    public static float CornerOuterRadius => 0.5f + (BeltWidth * 0.5f);
+    public static float CornerInnerRadius => CoreConfig.DistanceFromTileEdge;
+    public static float CornerOuterRadius => CoreConfig.TileSize - CoreConfig.DistanceFromTileEdge;
     
     public static float CornerPathLength =>
         ((CornerInnerRadius + CornerOuterRadius) * 0.5f) * (Mathf.PI * 0.5f);

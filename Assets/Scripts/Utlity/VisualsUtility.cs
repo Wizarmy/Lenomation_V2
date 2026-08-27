@@ -325,18 +325,18 @@ public static Mesh CreateCornerMesh(string name)
     for (int i = 0; i < segs; i++)
     {
         int p = i * 4, q = (i + 1) * 4;
-        top.Add(p + 2); top.Add(q + 2); top.Add(q + 3);
-        top.Add(p + 2); top.Add(q + 3); top.Add(p + 3);
+        top.Add(p + 2); top.Add(q + 3); top.Add(q + 2);
+        top.Add(p + 2); top.Add(p + 3); top.Add(q + 3);
 
-        bot.Add(p + 0); bot.Add(p + 1); bot.Add(q + 1);
-        bot.Add(p + 0); bot.Add(q + 1); bot.Add(q + 0);
+        bot.Add(p + 0); bot.Add(q + 1); bot.Add(p + 1);
+        bot.Add(p + 0); bot.Add(q + 0); bot.Add(q + 1);
 
         // inner wall
-        side.Add(p + 0); side.Add(q + 0); side.Add(q + 2);
-        side.Add(p + 0); side.Add(q + 2); side.Add(p + 2);
+        side.Add(p + 0); side.Add(q + 2); side.Add(q + 0);
+        side.Add(p + 0); side.Add(p + 2); side.Add(q + 2);
         // outer wall
-        side.Add(p + 1); side.Add(p + 3); side.Add(q + 3);
-        side.Add(p + 1); side.Add(q + 3); side.Add(q + 1);
+        side.Add(p + 1); side.Add(q + 3); side.Add(p + 3);
+        side.Add(p + 1); side.Add(q + 1); side.Add(q + 3);
     }
 
     var mesh = new Mesh { name = name };
@@ -355,14 +355,14 @@ public static Mesh CreateCornerGuardRailMesh()
     int   segs  = Mathf.Max(4, ConveyorConfig.CurveSegments);
     float hy    = ConveyorConfig.GuardRailHeight * 0.5f;
     float hw    = ConveyorConfig.GuardRailWidth  * 0.5f;
-    float inner = ConveyorConfig.CornerInnerRadius;
-    float outer = ConveyorConfig.CornerOuterRadius;
+    float inner = ConveyorConfig.CornerInnerRadius+hw;
+    float outer = ConveyorConfig.CornerOuterRadius-hw;
     Vector3 c   = new Vector3(0.5f, 0f, -0.5f);
 
     var verts = new List<Vector3>();
     var tris  = new List<int>();
 
-    void Ring(float radius, bool invert)
+    void Ring(float radius)
     {
         int start = verts.Count;
         for (int i = 0; i <= segs; i++)
@@ -370,7 +370,7 @@ public static Mesh CreateCornerGuardRailMesh()
             float angle = Mathf.Lerp(Mathf.PI, Mathf.PI * 0.5f, i / (float)segs);
             Vector3 mid = c + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
             Vector3 n   = (mid - c); n.y = 0f; n.Normalize();
-            if (invert) n = -n;
+           
 
             verts.Add(mid - n * hw + Vector3.up * -hy);
             verts.Add(mid + n * hw + Vector3.up * -hy);
@@ -394,8 +394,8 @@ public static Mesh CreateCornerGuardRailMesh()
         }
     }
 
-    Ring(inner, invert: true);
-    Ring(outer, invert: false);
+    Ring(inner);
+    Ring(outer);
     return FinishMesh("CornerGuardRailMesh", verts.ToArray(), tris.ToArray());
 }
 }
