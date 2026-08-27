@@ -291,5 +291,112 @@ public static Mesh CreateEndCapGuardRailMesh()
 
     return FinishMesh("EndCapGuardRailMesh", verts.ToArray(), tris.ToArray());
 }
+
+public static Mesh CreateCornerMesh(string name)
+{
+    float h      = ConveyorConfig.BeltHeight;
+    int   segs   = Mathf.Max(4, ConveyorConfig.CurveSegments);
+    float inner  = ConveyorConfig.CornerInnerRadius;
+    float outer  = ConveyorConfig.CornerOuterRadius;
+    Vector3 c    = new Vector3(0.5f, 0f, -0.5f); // SE corner, tile-centred
+
+    var verts = new List<Vector3>();
+    var top   = new List<int>();
+    var bot   = new List<int>();
+    var side  = new List<int>();
+
+    // Per sample: inner-bottom, outer-bottom, inner-top, outer-top
+    for (int i = 0; i <= segs; i++)
+    {
+        float t     = i / (float)segs;
+        float angle = Mathf.Lerp(Mathf.PI, Mathf.PI * 0.5f, t); // south → east
+        float ca = Mathf.Cos(angle);
+        float sa = Mathf.Sin(angle);
+
+        Vector3 inn = c + new Vector3(ca * inner, 0f, sa * inner);
+        Vector3 outp = c + new Vector3(ca * outer, 0f, sa * outer);
+
+        verts.Add(inn + Vector3.up * 0f);
+        verts.Add(outp + Vector3.up * 0f);
+        verts.Add(inn + Vector3.up * h);
+        verts.Add(outp + Vector3.up * h);
+    }
+
+    for (int i = 0; i < segs; i++)
+    {
+        int p = i * 4, q = (i + 1) * 4;
+        top.Add(p + 2); top.Add(q + 2); top.Add(q + 3);
+        top.Add(p + 2); top.Add(q + 3); top.Add(p + 3);
+
+        bot.Add(p + 0); bot.Add(p + 1); bot.Add(q + 1);
+        bot.Add(p + 0); bot.Add(q + 1); bot.Add(q + 0);
+
+        // inner wall
+        side.Add(p + 0); side.Add(q + 0); side.Add(q + 2);
+        side.Add(p + 0); side.Add(q + 2); side.Add(p + 2);
+        // outer wall
+        side.Add(p + 1); side.Add(p + 3); side.Add(q + 3);
+        side.Add(p + 1); side.Add(q + 3); side.Add(q + 1);
+    }
+
+    var mesh = new Mesh { name = name };
+    mesh.SetVertices(verts);
+    mesh.subMeshCount = 3;
+    mesh.SetTriangles(top, 0);
+    mesh.SetTriangles(bot, 1);
+    mesh.SetTriangles(side, 2);
+    mesh.RecalculateNormals();
+    mesh.RecalculateBounds();
+    return mesh;
+}
+
+public static Mesh CreateCornerGuardRailMesh()
+{
+    int   segs  = Mathf.Max(4, ConveyorConfig.CurveSegments);
+    float hy    = ConveyorConfig.GuardRailHeight * 0.5f;
+    float hw    = ConveyorConfig.GuardRailWidth  * 0.5f;
+    float inner = ConveyorConfig.CornerInnerRadius;
+    float outer = ConveyorConfig.CornerOuterRadius;
+    Vector3 c   = new Vector3(0.5f, 0f, -0.5f);
+
+    var verts = new List<Vector3>();
+    var tris  = new List<int>();
+
+    void Ring(float radius, bool invert)
+    {
+        int start = verts.Count;
+        for (int i = 0; i <= segs; i++)
+        {
+            float angle = Mathf.Lerp(Mathf.PI, Mathf.PI * 0.5f, i / (float)segs);
+            Vector3 mid = c + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+            Vector3 n   = (mid - c); n.y = 0f; n.Normalize();
+            if (invert) n = -n;
+
+            verts.Add(mid - n * hw + Vector3.up * -hy);
+            verts.Add(mid + n * hw + Vector3.up * -hy);
+            verts.Add(mid + n * hw + Vector3.up *  hy);
+            verts.Add(mid - n * hw + Vector3.up *  hy);
+        }
+
+        void Quad(int a, int b, int c0, int d)
+        {
+            tris.Add(a); tris.Add(c0); tris.Add(b);
+            tris.Add(a); tris.Add(d);  tris.Add(c0);
+        }
+
+        for (int i = 0; i < segs; i++)
+        {
+            int p = start + i * 4, q = start + (i + 1) * 4;
+            Quad(p + 3, q + 3, q + 2, p + 2);
+            Quad(p + 0, p + 1, q + 1, q + 0);
+            Quad(p + 0, q + 0, q + 3, p + 3);
+            Quad(p + 1, p + 2, q + 2, q + 1);
+        }
+    }
+
+    Ring(inner, invert: true);
+    Ring(outer, invert: false);
+    return FinishMesh("CornerGuardRailMesh", verts.ToArray(), tris.ToArray());
+}
 }
 #endif

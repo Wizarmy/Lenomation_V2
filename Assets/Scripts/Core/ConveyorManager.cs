@@ -2,14 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Owns conveyor placement, neighbour linking, and endcap spawn/despawn.
-/// Endcaps are visual children — they do not occupy a grid cell.
+/// Owns conveyor placement, neighbour linking, endcaps, and mid-tile links.
+/// Endcaps and links are visual children — they do not occupy a grid cell.
 /// </summary>
 public class ConveyorManager : MonoBehaviour
 {
     public static ConveyorManager Instance { get; private set; }
 
-    // Real belts only (not endcaps), keyed by grid (x, z)
     readonly Dictionary<Vector2Int, Conveyor> grid = new Dictionary<Vector2Int, Conveyor>();
     readonly List<Conveyor> allConveyors = new List<Conveyor>();
 
@@ -18,6 +17,7 @@ public class ConveyorManager : MonoBehaviour
 
     const string EntryCapName = "EndCap_Entry";
     const string ExitCapName  = "EndCap_Exit";
+    const string LinkName     = "ConveyorLink";
 
     void Awake()
     {
@@ -33,10 +33,6 @@ public class ConveyorManager : MonoBehaviour
     // Public API
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Place a straight belt on a grid cell. yRotation is 0/90/180/270.
-    /// Returns the belt, or null if the cell is occupied.
-    /// </summary>
     public Conveyor PlaceStraight(Vector2Int cell, float yRotation = 0f, int beltLevel = -1,
                                   BeltDirection travel = BeltDirection.AntiClockwise)
     {
@@ -62,6 +58,37 @@ public class ConveyorManager : MonoBehaviour
         }
 
         conv.pieceType = ConveyorPieceType.Straight;
+        conv.SetGridPosition(new Vector2(cell.x, cell.y));
+        conv.SetDirection(travel);
+
+        Register(conv);
+        RebuildConnectionsAround(conv);
+        return conv;
+    }
+
+    public Conveyor PlaceCorner(Vector2Int cell, float yRotation = 0f,
+                                BeltDirection travel = BeltDirection.Clockwise)
+    {
+        if (grid.ContainsKey(cell))
+        {
+            Debug.Log($"Conveyor already at {cell}");
+            return null;
+        }
+
+        GameObject prefab = PrefabManager.Instance.GetCorner();
+        if (prefab == null) return null;
+
+        GameObject go = Instantiate(prefab, Vector3.zero, Quaternion.Euler(0f, yRotation, 0f));
+        go.name = prefab.name;
+
+        var conv = go.GetComponent<Conveyor>();
+        if (conv == null)
+        {
+            Destroy(go);
+            return null;
+        }
+
+        conv.pieceType = ConveyorPieceType.Corner;
         conv.SetGridPosition(new Vector2(cell.x, cell.y));
         conv.SetDirection(travel);
 
@@ -97,14 +124,14 @@ public class ConveyorManager : MonoBehaviour
 
     public void RebuildConnectionsAround(Conveyor conveyor)
     {
-        if (conveyor == null || conveyor.isEndCap) return;
+        if (conveyor == null || !IsBelt(conveyor)) return;
 
         RefreshLinksAndCaps(conveyor);
 
         Vector2Int cell = CellOf(conveyor);
         foreach (var n in CardinalNeighbours(cell))
         {
-            if (grid.TryGetValue(n, out Conveyor other) && other != null && !other.isEndCap)
+            if (grid.TryGetValue(n, out Conveyor other) && IsBelt(other))
                 RefreshLinksAndCaps(other);
         }
     }
@@ -115,7 +142,7 @@ public class ConveyorManager : MonoBehaviour
 
     public void Register(Conveyor conveyor)
     {
-        if (conveyor == null || conveyor.isEndCap) return;
+        if (!IsBelt(conveyor)) return;
 
         Vector2Int key = CellOf(conveyor);
 
@@ -141,63 +168,104 @@ public class ConveyorManager : MonoBehaviour
         allConveyors.Remove(conveyor);
         conveyor.nextConveyor = null;
         conveyor.previousConveyor = null;
-        ClearCaps(conveyor);
+        ClearVisuals(conveyor);
     }
 
     void RebuildNeighboursOf(Vector2Int cell)
     {
         foreach (var n in CardinalNeighbours(cell))
         {
-            if (grid.TryGetValue(n, out Conveyor other) && other != null && !other.isEndCap)
+            if (grid.TryGetValue(n, out Conveyor other) && IsBelt(other))
                 RefreshLinksAndCaps(other);
         }
     }
 
     // ------------------------------------------------------------------
-    // Linking + endcaps
+    // Linking + endcaps + mid links
     // ------------------------------------------------------------------
 
     void RefreshLinksAndCaps(Conveyor conv)
     {
-        if (conv == null || conv.isEndCap) return;
+        if (!IsBelt(conv)) return;
 
         Vector2Int cell   = CellOf(conv);
-        Vector2Int travel = TravelDir(conv);          // outgoing
-        Vector2Int behind = new Vector2Int(-travel.x, -travel.y);
+        Vector2Int travel = TravelDir(conv);
+        Vector2Int behind = IncomingDir(conv);
 
-        // --- outgoing ---
         Conveyor next = GetBeltAt(cell + travel);
         bool linksOut = CanLink(conv, next);
         conv.nextConveyor = linksOut ? next : null;
 
-        // --- incoming ---
         Conveyor prev = GetBeltAt(cell + behind);
         bool linksIn = CanLink(prev, conv);
         conv.previousConveyor = linksIn ? prev : null;
         if (linksIn)
             prev.nextConveyor = conv;
 
-        if (linksIn)  DestroyCap(conv, "EndCap_Entry");
+        if (linksIn)  DestroyChild(conv, EntryCapName);
         else          EnsureCap(conv, entry: true);
 
-        if (linksOut) DestroyCap(conv, "EndCap_Exit");
+        if (linksOut) DestroyChild(conv, ExitCapName);
         else          EnsureCap(conv, entry: false);
+
+        RefreshLink(conv);
+    }
+
+    void RefreshLink(Conveyor conv)
+    {
+        // Corner exit is local +X — straight-link offset is local +Z only.
+        if (conv.isCorner)
+            return;
+
+        bool needLink = conv.nextConveyor != null;
+        Transform existing = conv.transform.Find(LinkName);
+
+        if (!needLink)
+        {
+            if (existing != null) Destroy(existing.gameObject);
+            return;
+        }
+
+        if (existing != null) return;
+
+        GameObject prefab = PrefabManager.Instance != null
+            ? PrefabManager.Instance.GetLink()
+            : null;
+        if (prefab == null)
+        {
+            Debug.LogError("[ConveyorManager] No LinkConveyor prefab.");
+            return;
+        }
+
+        var go = Instantiate(prefab, conv.transform);
+        go.name = LinkName;
+        go.transform.localPosition = new Vector3(
+            0f, 0f,
+            ConveyorConfig.HalfBeltLength + ConveyorConfig.LinkLength * 0.5f);
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = Vector3.one;
+
+        var link = go.GetComponent<Conveyor>();
+        if (link != null)
+        {
+            link.pieceType        = ConveyorPieceType.Link;
+            link.entryPoint       = null;
+            link.exitPoint        = null;
+            link.nextConveyor     = null;
+            link.previousConveyor = null;
+        }
     }
 
     static bool CanLink(Conveyor from, Conveyor to)
     {
-        if (from == null || to == null) return false;
-        if (from.isEndCap || to.isEndCap) return false;
+        if (!IsBelt(from) || !IsBelt(to)) return false;
         if (!from.HasExit || !to.HasEntry) return false;
 
-        // to must sit on the cell in front of from, and travel the same way
-        // (its incoming side faces from)
         Vector2Int fromCell = CellOf(from);
         Vector2Int toCell   = CellOf(to);
-        Vector2Int travel   = TravelDir(from);
 
-        if (toCell != fromCell + travel) return false;
-        if (TravelDir(to) != travel)     return false;
+        if (toCell != fromCell + TravelDir(from)) return false;
+        if (IncomingDir(to) != TravelDir(from))   return false;
 
         return true;
     }
@@ -205,90 +273,149 @@ public class ConveyorManager : MonoBehaviour
     Conveyor GetBeltAt(Vector2Int cell)
     {
         if (!grid.TryGetValue(cell, out Conveyor c)) return null;
-        if (c == null || c.isEndCap) return null;
-        return c;
+        return IsBelt(c) ? c : null;
+    }
+
+    static bool IsBelt(Conveyor c)
+    {
+        if (c == null) return false;
+        if (c.isEndCap) return false;
+        if (c.pieceType == ConveyorPieceType.Link) return false;
+        return true;
     }
 
     // ------------------------------------------------------------------
-    // Endcaps (children of the belt)
+    // Endcaps
     // ------------------------------------------------------------------
 
     void EnsureCap(Conveyor conv, bool entry)
     {
-        string capName = entry ? "EndCap_Entry" : "EndCap_Exit";
+        string capName = entry ? EntryCapName : ExitCapName;
         if (conv.transform.Find(capName) != null) return;
 
-        GameObject prefab = PrefabManager.Instance.GetEndCap();
+        GameObject prefab = PrefabManager.Instance != null
+            ? PrefabManager.Instance.GetEndCap()
+            : null;
         if (prefab == null)
         {
-            Debug.LogError(
-                $"[ConveyorManager] No EndCap prefab for level {conv.beltLevel}.");
+            Debug.LogError("[ConveyorManager] No EndCap prefab.");
             return;
         }
 
-        // Natural straight path is local +Z.
-        // Clockwise reverses item flow → entry/exit swap along local Z.
-        bool flipped = !conv.isCorner && conv.direction == BeltDirection.Clockwise;
-
-        // Open side along local Z:
-        //   entry → -Z   (or +Z if flipped)
-        //   exit  → +Z   (or -Z if flipped)
-        float entryExitPointValue = CoreConfig.TileSize - CoreConfig.DistanceFromTileEdge;
-        float alongZ = entry ? -entryExitPointValue : entryExitPointValue;
-        if (flipped) alongZ = -alongZ;
-
-        // Mesh: flat on -X, bulge +X.
-        // Empirically for +Z travel: entry yaw 90, exit yaw 270.
-        float yaw = entry ? 90f : 270f;
-        if (flipped) yaw = entry ? 270f : 90f;
+        GetCapLocal(conv, entry, out Vector3 localPos, out float yaw);
 
         GameObject cap = Instantiate(prefab, conv.transform);
         cap.name = capName;
-        cap.transform.localPosition = new Vector3(0f, 0f, alongZ);
+        cap.transform.localPosition = localPos;
         cap.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
         cap.transform.localScale    = Vector3.one;
 
         var capConv = cap.GetComponent<Conveyor>();
         if (capConv != null)
         {
-            capConv.pieceType    = ConveyorPieceType.EndCap;
-            capConv.entryPoint   = null;
-            capConv.exitPoint    = null;
-            capConv.nextConveyor = null;
+            capConv.pieceType        = ConveyorPieceType.EndCap;
+            capConv.entryPoint       = null;
+            capConv.exitPoint        = null;
+            capConv.nextConveyor     = null;
+            capConv.previousConveyor = null;
         }
     }
 
-    static void DestroyCap(Conveyor conv, string capName)
+    static void GetCapLocal(Conveyor conv, bool entry, out Vector3 localPos, out float yaw)
     {
-        Transform t = conv.transform.Find(capName);
+        float dist = CoreConfig.TileSize - CoreConfig.DistanceFromTileEdge;
+
+        if (conv.isCorner)
+        {
+            // Default corner: entry -Z, exit +X
+            if (entry)
+            {
+                localPos = new Vector3(0f, 0f, -dist);
+                yaw = 90f;
+            }
+            else
+            {
+                localPos = new Vector3(dist, 0f, 0f);
+                yaw = 0f; // bulge +X already faces out; tweak if the cap looks wrong
+            }
+
+            if (conv.direction == BeltDirection.AntiClockwise)
+            {
+                localPos = -localPos;
+                yaw += 180f;
+            }
+            return;
+        }
+
+        bool flipped = conv.direction == BeltDirection.Clockwise;
+        float alongZ = entry ? -dist : dist;
+        if (flipped) alongZ = -alongZ;
+
+        yaw = entry ? 90f : 270f;
+        if (flipped) yaw = entry ? 270f : 90f;
+
+        localPos = new Vector3(0f, 0f, alongZ);
+    }
+
+    static void DestroyChild(Conveyor conv, string childName)
+    {
+        Transform t = conv.transform.Find(childName);
         if (t != null)
             Destroy(t.gameObject);
     }
 
-    static void ClearCaps(Conveyor conv)
+    static void ClearVisuals(Conveyor conv)
     {
-        DestroyCap(conv, EntryCapName);
-        DestroyCap(conv, ExitCapName);
+        DestroyChild(conv, EntryCapName);
+        DestroyChild(conv, ExitCapName);
+        DestroyChild(conv, LinkName);
     }
 
     // ------------------------------------------------------------------
-    // Direction / grid helpers
+    // Direction / grid
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Cardinal travel on the grid. Straight natural path is local +Z.
-    /// Clockwise on a straight reverses travel (matches arrow flip).
-    /// </summary>
+    /// <summary>Grid step of items leaving this piece.</summary>
     public static Vector2Int TravelDir(Conveyor conv)
     {
-        Vector3 fwd = conv.transform.forward;
-        if (!conv.isCorner && conv.direction == BeltDirection.Clockwise)
-            fwd = -fwd;
+        Vector3 outDir;
 
-        if (Mathf.Abs(fwd.x) >= Mathf.Abs(fwd.z))
-            return new Vector2Int(fwd.x >= 0f ? 1 : -1, 0);
+        if (conv.isCorner)
+        {
+            // Default: out local +X. AntiClockwise: out local -Z.
+            outDir = conv.direction == BeltDirection.AntiClockwise
+                ? -conv.transform.forward
+                :  conv.transform.right;
+        }
+        else
+        {
+            outDir = conv.transform.forward;
+            if (conv.direction == BeltDirection.Clockwise)
+                outDir = -outDir;
+        }
 
-        return new Vector2Int(0, fwd.z >= 0f ? 1 : -1);
+        return ToCardinal(outDir);
+    }
+
+    /// <summary>Grid step from the neighbour that feeds this piece.</summary>
+    public static Vector2Int IncomingDir(Conveyor conv)
+    {
+        if (!conv.isCorner)
+            return new Vector2Int(-TravelDir(conv).x, -TravelDir(conv).y);
+
+        // Default: in from local -Z. AntiClockwise: in from local -X.
+        Vector3 inn = conv.direction == BeltDirection.AntiClockwise
+            ? -conv.transform.right
+            : -conv.transform.forward;
+
+        return ToCardinal(inn);
+    }
+
+    static Vector2Int ToCardinal(Vector3 dir)
+    {
+        if (Mathf.Abs(dir.x) >= Mathf.Abs(dir.z))
+            return new Vector2Int(dir.x >= 0f ? 1 : -1, 0);
+        return new Vector2Int(0, dir.z >= 0f ? 1 : -1);
     }
 
     public static Vector2Int CellOf(Conveyor conv)
@@ -307,7 +434,7 @@ public class ConveyorManager : MonoBehaviour
 
     static IEnumerable<Vector2Int> CardinalNeighbours(Vector2Int cell)
     {
-        yield return cell + Vector2Int.up;      // +Z in our y=z mapping
+        yield return cell + Vector2Int.up;
         yield return cell + Vector2Int.down;
         yield return cell + Vector2Int.left;
         yield return cell + Vector2Int.right;

@@ -16,6 +16,8 @@ public static class ConveyorConfig
     public static float HalfBeltHeight => BeltHeight * 0.5f;
     public static float HalfBeltLength => BeltLength * 0.5f;
     
+    public static float LinkLength => CoreConfig.TileSize - BeltLength;
+    
     // ConveyorConfig
     public const float GuardRailWidth  = 0.01f;
     public const float GuardRailHeight = 0.03f;

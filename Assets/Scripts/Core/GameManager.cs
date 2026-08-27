@@ -22,6 +22,10 @@ public class GameManager : MonoBehaviour
         
         // Vertical in the XZ plane = travel along +X (yRot 90)
         ConveyorManager.Instance.PlaceStraight(new Vector2Int(2, 0), yRotation: 90f);
+        
+        ConveyorManager.Instance.PlaceStraight(new Vector2Int(-3, 0), 0f);
+        ConveyorManager.Instance. PlaceCorner(new Vector2Int(-3, 1), 0f);
+        ConveyorManager.Instance. PlaceStraight(new Vector2Int(-2, 1), 90f);
     
     }
     

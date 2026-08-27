@@ -17,6 +17,7 @@ public static class PathingUtility
         CreateFolder(PathingConfig.InserterFolder.TrimEnd('/'));
         CreateFolder(PathingConfig.ItemFolder.TrimEnd('/'));
         CreateFolder(PathingConfig.GroundFolder.TrimEnd('/'));
+        CreateFolder(PathingConfig.LinkFolder.TrimEnd('/'));
         CreateFolder("Assets/Materials");
     }
 

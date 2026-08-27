@@ -13,5 +13,6 @@ public static class PathingConfig
     public const string ItemFolder      = PrefabFolder + "Items/";
     public const string GroundFolder    = PrefabFolder + "Ground/";
     public const string MaterialFolder  = "Assets/Materials/";
+    public const string LinkFolder = ConveyorFolder + "Links/";
 }
 

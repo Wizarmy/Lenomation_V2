@@ -10,7 +10,9 @@ public class PrefabManager : MonoBehaviour
     
     [Header("Conveyors")]
     public  GameObject[] straightPrefabs = new GameObject[5];
+    public GameObject cornerPrefab;
     public GameObject endCapPrefab;
+    public GameObject linkPrefab;
     
     [Header("Arrow")]
     public GameObject straightArrowPrefab;
@@ -55,6 +57,15 @@ public class PrefabManager : MonoBehaviour
         endCapPrefab = LoadSingle(
             PathingConfig.EndCapFolder + "EndCapConveyor.prefab",
             "Prefabs/Logistics/EndCapConveyor");
+        
+        linkPrefab = LoadSingle(
+            PathingConfig.LinkFolder + "LinkConveyor.prefab",
+            "Prefabs/Logistics/LinkConveyor");
+        
+        cornerPrefab = LoadSingle(
+            PathingConfig.CornerFolder + "CornerConveyor.prefab",
+            "Prefabs/Logistics/CornerConveyor");
+
 
         straightArrowPrefab = EnsureArrowPrefab();
         guardRailPrefab = EnsureGuardRailPrefab();
@@ -182,5 +193,7 @@ public class PrefabManager : MonoBehaviour
     public GameObject GetStraight(int level) => straightPrefabs[Mathf.Clamp(level - 1, 0, 4)];
 
     public GameObject GetEndCap() => endCapPrefab;
+    public GameObject GetLink() => linkPrefab;
+    public GameObject GetCorner() => cornerPrefab;
 
 }

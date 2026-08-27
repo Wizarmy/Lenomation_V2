@@ -2,5 +2,6 @@ public enum ConveyorPieceType
 {
     Straight,
     Corner,
-    EndCap
+    EndCap,
+    Link
 }
