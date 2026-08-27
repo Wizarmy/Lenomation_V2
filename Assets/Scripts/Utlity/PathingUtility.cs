@@ -1,9 +1,9 @@
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
 
-public class PathingUtility : MonoBehaviour
+public static class PathingUtility
 {
-    
     public static void EnsureAllFolders()
     {
         CreateFolder("Assets/Prefabs");
@@ -19,24 +19,50 @@ public class PathingUtility : MonoBehaviour
         CreateFolder(PathingConfig.GroundFolder.TrimEnd('/'));
         CreateFolder("Assets/Materials");
     }
-    
+
     public static void DeleteIfExists(string path)
     {
+        if (string.IsNullOrEmpty(path)) return;
         if (AssetDatabase.LoadAssetAtPath<Object>(path) != null)
             AssetDatabase.DeleteAsset(path);
     }
+
+    /// <summary>Deletes every asset in a folder (not the folder itself).</summary>
+    public static void DeleteAssetsInFolder(string folder)
+    {
+        folder = folder.TrimEnd('/');
+        if (!AssetDatabase.IsValidFolder(folder)) return;
+
+        string[] guids = AssetDatabase.FindAssets("", new[] { folder });
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (string.IsNullOrEmpty(path) || AssetDatabase.IsValidFolder(path))
+                continue;
+            AssetDatabase.DeleteAsset(path);
+        }
+    }
     
-    
-    private static void CreateFolder(string path)
+    public static void DeleteFolderAndRecreate(string folder)
+    {
+        folder = folder.TrimEnd('/');
+        if (AssetDatabase.IsValidFolder(folder))
+            AssetDatabase.DeleteAsset(folder);
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        EnsureAllFolders(); // recreates Straight/ and EndCaps/
+    }
+
+    static void CreateFolder(string path)
     {
         if (AssetDatabase.IsValidFolder(path)) return;
-
         string parent = System.IO.Path.GetDirectoryName(path).Replace("\\", "/");
-        string folderName = System.IO.Path.GetFileName(path);
-
+        string name   = System.IO.Path.GetFileName(path);
         if (!AssetDatabase.IsValidFolder(parent))
             CreateFolder(parent);
-
-        AssetDatabase.CreateFolder(parent, folderName);
+        AssetDatabase.CreateFolder(parent, name);
     }
 }
+#endif

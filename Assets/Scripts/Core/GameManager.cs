@@ -10,9 +10,19 @@ public class GameManager : MonoBehaviour
     {
         if (PrefabManager.Instance == null)
             gameObject.AddComponent<PrefabManager>();
-        
+
+        if (ConveyorManager.Instance == null)
+            gameObject.AddComponent<ConveyorManager>();
+
         SpawnGround();
-        SpawnStraightBelt(new Vector2(0,0));
+
+        // Example: two belts in a line, should link and drop the shared endcaps
+        ConveyorManager.Instance.PlaceStraight(new Vector2Int(0, 0), yRotation: 0f);
+        ConveyorManager.Instance.PlaceStraight(new Vector2Int(0, 1), yRotation: 0f);
+        
+        // Vertical in the XZ plane = travel along +X (yRot 90)
+        ConveyorManager.Instance.PlaceStraight(new Vector2Int(2, 0), yRotation: 90f);
+    
     }
     
     public void SpawnGround()
@@ -31,17 +41,5 @@ public class GameManager : MonoBehaviour
         go.name = "Ground";
     }
 
-    void SpawnStraightBelt(Vector3 position, int beltLevel =1, float yRot =0f)
-    {
-        GameObject straightPrefab = PrefabManager.GetStraight(beltLevel);
-        
-        GameObject go = Instantiate(straightPrefab, position, Quaternion.Euler(0f, yRot, 0f));
-        go.name = straightPrefab.name;
-
-        var conv = go.GetComponent<Conveyor>();
-        if (conv != null)
-            conv.SetDirection(BeltDirection.AntiClockwise);
-        conv.SetGridPosition(position);
-    }
-
+  
 }

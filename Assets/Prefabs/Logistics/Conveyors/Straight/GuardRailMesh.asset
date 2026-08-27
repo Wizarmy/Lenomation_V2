@@ -6,39 +6,19 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: StraightMesh
+  m_Name: GuardRailMesh
   serializedVersion: 12
   m_SubMeshes:
   - serializedVersion: 2
     firstByte: 0
-    indexCount: 6
-    topology: 0
-    baseVertex: 0
-    firstVertex: 4
-    vertexCount: 4
-    localAABB:
-      m_Center: {x: 0, y: 0.15, z: 0}
-      m_Extent: {x: 0.4, y: 0, z: 0.4}
-  - serializedVersion: 2
-    firstByte: 12
-    indexCount: 6
+    indexCount: 72
     topology: 0
     baseVertex: 0
     firstVertex: 0
-    vertexCount: 4
+    vertexCount: 16
     localAABB:
       m_Center: {x: 0, y: 0, z: 0}
-      m_Extent: {x: 0.4, y: 0, z: 0.4}
-  - serializedVersion: 2
-    firstByte: 24
-    indexCount: 12
-    topology: 0
-    baseVertex: 0
-    firstVertex: 0
-    vertexCount: 8
-    localAABB:
-      m_Center: {x: 0, y: 0.075, z: 0}
-      m_Extent: {x: 0.4, y: 0.075, z: 0.4}
+      m_Extent: {x: 0.4, y: 0.015, z: 0.4}
   m_Shapes:
     vertices: []
     shapes: []
@@ -55,10 +35,10 @@ Mesh:
   m_KeepVertices: 1
   m_KeepIndices: 1
   m_IndexFormat: 0
-  m_IndexBuffer: 040006000500040007000600000001000200000002000300000003000700000007000400010006000200010005000600
+  m_IndexBuffer: 0400060005000400070006000000010002000000020003000000030007000000070004000100050006000100060002000000040005000000050001000300020006000300060007000c000e000d000c000f000e00080009000a0008000a000b0008000b000f0008000f000c0009000d000e0009000e000a0008000c000d0008000d0009000b000a000e000b000e000f00
   m_VertexData:
     serializedVersion: 3
-    m_VertexCount: 8
+    m_VertexCount: 16
     m_Channels:
     - stream: 0
       offset: 0
@@ -116,8 +96,8 @@ Mesh:
       offset: 0
       format: 0
       dimension: 0
-    m_DataSize: 192
-    _typelessdata: cdccccbe00000000cdccccbe22b63cbe849d7bbf00000000cdcccc3e00000000cdccccbe73c6b33e45b36fbf00000000cdcccc3e00000000cdcccc3e6929bf3de2e17ebf00000000cdccccbe00000000cdcccc3e22b63cbe849d7bbf00000000cdccccbe9a99193ecdccccbe6929bfbde2e17e3f00000000cdcccc3e9a99193ecdccccbe22b63c3e849d7b3f00000000cdcccc3e9a99193ecdcccc3e22b63c3e849d7b3f00000000cdccccbe9a99193ecdcccc3e73c6b3be45b36f3f00000000
+    m_DataSize: 384
+    _typelessdata: cdccccbe8fc275bccdccccbe8bd872bfa9e5a1bec94642bc15aec7be8fc275bccdccccbe17837c3f5b5728be6b02cabb15aec7be8fc275bccdcccc3e51fe543fd8fe0dbf02652a3ccdccccbe8fc275bccdcccc3e6fcb72bfebdca1be4c3cc23ccdccccbe8fc2753ccdccccbe51fe54bfd8fe0d3f02652abc15aec7be8fc2753ccdccccbe6fcb723febdca13e4c3cc2bc15aec7be8fc2753ccdcccc3e8bd8723fa9e5a13ec946423ccdccccbe8fc2753ccdcccc3e17837cbf5b57283e6b02ca3b15aec73e8fc275bccdccccbe8bd872bfa9e5a1bec94642bccdcccc3e8fc275bccdccccbe17837c3f5b5728be6b02cabbcdcccc3e8fc275bccdcccc3e51fe543fd8fe0dbf02652a3c15aec73e8fc275bccdcccc3e6fcb72bfebdca1be4c3cc23c15aec73e8fc2753ccdccccbe51fe54bfd8fe0d3f02652abccdcccc3e8fc2753ccdccccbe6fcb723febdca13e4c3cc2bccdcccc3e8fc2753ccdcccc3e8bd8723fa9e5a13ec946423c15aec73e8fc2753ccdcccc3e17837cbf5b57283e6b02ca3b
   m_CompressedMesh:
     m_Vertices:
       m_NumItems: 0
@@ -171,8 +151,8 @@ Mesh:
       m_BitSize: 0
     m_UVInfo: 0
   m_LocalAABB:
-    m_Center: {x: 0, y: 0.075, z: 0}
-    m_Extent: {x: 0.4, y: 0.075, z: 0.4}
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 0.4, y: 0.015, z: 0.4}
   m_MeshUsageFlags: 0
   m_CookingOptions: 30
   m_BakedConvexCollisionMesh: 
@@ -193,16 +173,6 @@ Mesh:
       m_LodBias: 0
     m_NumLevels: 1
     m_SubMeshes:
-    - serializedVersion: 2
-      m_Levels:
-      - serializedVersion: 1
-        m_IndexStart: 0
-        m_IndexCount: 0
-    - serializedVersion: 2
-      m_Levels:
-      - serializedVersion: 1
-        m_IndexStart: 0
-        m_IndexCount: 0
     - serializedVersion: 2
       m_Levels:
       - serializedVersion: 1

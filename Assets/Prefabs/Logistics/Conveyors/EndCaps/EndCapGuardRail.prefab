@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2056760507528163479
+--- !u!1 &7623586973776792142
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,25 +8,23 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4252711800797414775}
-  - component: {fileID: 2219473894617119993}
-  - component: {fileID: 7650422651065511185}
-  - component: {fileID: 7303572210228176988}
-  - component: {fileID: 1916759323101011989}
+  - component: {fileID: 6077414267051103550}
+  - component: {fileID: 459803239121495716}
+  - component: {fileID: 8093033069697290403}
   m_Layer: 0
-  m_Name: EndCapConveyor_L2
+  m_Name: EndCapGuardRail
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &4252711800797414775
+--- !u!4 &6077414267051103550
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2056760507528163479}
+  m_GameObject: {fileID: 7623586973776792142}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -35,21 +33,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &2219473894617119993
+--- !u!33 &459803239121495716
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2056760507528163479}
-  m_Mesh: {fileID: 4300000, guid: d37c848f168218543bfd28e7b04339e8, type: 2}
---- !u!23 &7650422651065511185
+  m_GameObject: {fileID: 7623586973776792142}
+  m_Mesh: {fileID: 4300000, guid: 94d7d8dac5696994e8cd6e8b316c90e6, type: 2}
+--- !u!23 &8093033069697290403
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2056760507528163479}
+  m_GameObject: {fileID: 7623586973776792142}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -68,9 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 4194239cb6c74934fa3996fd5e72e5a3, type: 2}
-  - {fileID: 2100000, guid: edb06e9e5d5b93444b4687125d0ed5cd, type: 2}
-  - {fileID: 2100000, guid: 23db05cf8cc35354390211056b589b8c, type: 2}
+  - {fileID: 2100000, guid: 91b1496d333e8574595ef9f50642f45a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -94,46 +90,3 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &7303572210228176988
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2056760507528163479}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 4300000, guid: d37c848f168218543bfd28e7b04339e8, type: 2}
---- !u!114 &1916759323101011989
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2056760507528163479}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30fefab99fdfa2249919b5437e460bfe, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Conveyor
-  gridPosition: {x: 0, y: 0}
-  moveSpeed: 1
-  maxItems: 1
-  beltLevel: 2
-  pieceType: 2
-  direction: 0
-  entryPoint: {fileID: 0}
-  exitPoint: {fileID: 0}
-  nextConveyor: {fileID: 0}

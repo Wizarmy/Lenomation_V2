@@ -8,15 +8,20 @@ public enum BeltDirection
 
 public static class ConveyorConfig
 {
-    public const float BeltWidth  = 1.0f;   // footprint
+    public const float BeltWidth  = CoreConfig.TileSize - CoreConfig.DistanceFromTileEdge * 2f;
     public const float BeltHeight = 0.15f;
-    public const float BeltLength = 1.0f;   // footprint
+    public const float BeltLength = CoreConfig.TileSize - CoreConfig.DistanceFromTileEdge * 2f; // full tile
     
     public static float HalfBeltWidth  => BeltWidth  * 0.5f;
     public static float HalfBeltHeight => BeltHeight * 0.5f;
     public static float HalfBeltLength => BeltLength * 0.5f;
     
-    public const float EndCapArcCurve = 3f / 32f;
+    // ConveyorConfig
+    public const float GuardRailWidth  = 0.01f;
+    public const float GuardRailHeight = 0.03f;
+    public static readonly Color GuardRailColor = new Color(0.5f, 0.5f, 0.55f);
+    
+    public const float EndCapArcCurve = 1f / 32f;
     
     public static float StraightPathLength => BeltLength;
     

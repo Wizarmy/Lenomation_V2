@@ -1,19 +1,17 @@
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-public class VisualsUtility : MonoBehaviour
+public static class VisualsUtility
 {
-    
     public static Material GetOrCreateMaterial(string name, Color color)
     {
         string path = $"{PathingConfig.MaterialFolder}{name}.mat";
-        Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
         if (mat == null)
         {
-            mat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-            mat.color = color;
+            mat = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = color };
             AssetDatabase.CreateAsset(mat, path);
         }
         else
@@ -24,33 +22,7 @@ public class VisualsUtility : MonoBehaviour
         }
         return mat;
     }
-    
-    public static Mesh CreateStraightArrowMesh()
-    {
-        float size  = ArrowConfig.ArrowSize;
-        float depth = ArrowConfig.ArrowDepth;
-        float halfD = depth * 0.5f;
 
-        Vector3[] verts = {
-            new Vector3(0,  halfD,  size * 0.9f),
-            new Vector3(-size * 0.55f,  halfD, -size * 0.7f),
-            new Vector3( size * 0.55f,  halfD, -size * 0.7f),
-            new Vector3(0, -halfD,  size * 0.9f),
-            new Vector3(-size * 0.55f, -halfD, -size * 0.7f),
-            new Vector3( size * 0.55f, -halfD, -size * 0.7f)
-        };
-
-        int[] tris = {
-            0, 2, 1,
-            3, 4, 5,
-            0, 1, 4, 0, 4, 3,
-            1, 2, 5, 1, 5, 4,
-            2, 0, 3, 2, 3, 5
-        };
-
-        return FinishMesh("StraightArrowMesh", verts, tris);
-    }
-    
     public static Mesh FinishMesh(string name, Vector3[] verts, int[] tris)
     {
         var mesh = new Mesh { name = name };
@@ -60,6 +32,64 @@ public class VisualsUtility : MonoBehaviour
         mesh.RecalculateBounds();
         return mesh;
     }
+
+    // ------------------------------------------------------------------
+    // Ellipse samples (tile-centred, bulge +X)
+    // ------------------------------------------------------------------
+    public static Vector3 EllipsePoint(float angle, float radiusX, float radiusZ)
+    {
+        return new Vector3(
+            radiusX * Mathf.Cos(angle) - 0.5f,
+            0f,
+            0.5f + radiusZ * Mathf.Sin(angle) - 0.5f);
+    }
+
+    public static List<Vector3> SampleHalfEllipse(float radiusX, float radiusZ, int segments)
+    {
+        var pts = new List<Vector3>(segments + 1);
+        for (int i = 0; i <= segments; i++)
+        {
+            float t = i / (float)segments;
+            float angle = Mathf.Lerp(-Mathf.PI * 0.5f, Mathf.PI * 0.5f, t);
+            pts.Add(EllipsePoint(angle, radiusX, radiusZ));
+        }
+        return pts;
+    }
+
+    static void AddQuad(List<int> tris, int a, int b, int c, int d)
+    {
+        tris.Add(a); tris.Add(c); tris.Add(b);
+        tris.Add(a); tris.Add(d); tris.Add(c);
+    }
+
+    // ------------------------------------------------------------------
+    // Arrows
+    // ------------------------------------------------------------------
+    public static Mesh CreateStraightArrowMesh()
+    {
+        float size = ArrowConfig.ArrowSize;
+        float halfD = ArrowConfig.ArrowDepth * 0.5f;
+
+        Vector3[] verts =
+        {
+            new Vector3(0,  halfD,  size * 0.9f),
+            new Vector3(-size * 0.55f,  halfD, -size * 0.7f),
+            new Vector3( size * 0.55f,  halfD, -size * 0.7f),
+            new Vector3(0, -halfD,  size * 0.9f),
+            new Vector3(-size * 0.55f, -halfD, -size * 0.7f),
+            new Vector3( size * 0.55f, -halfD, -size * 0.7f)
+        };
+
+        int[] tris =
+        {
+            0, 2, 1,  3, 4, 5,
+            0, 1, 4,  0, 4, 3,
+            1, 2, 5,  1, 5, 4,
+            2, 0, 3,  2, 3, 5
+        };
+
+        return FinishMesh("StraightArrowMesh", verts, tris);
+    }
     
     /// <summary>Horizontal quad in XZ, normal +Y. Optional UVs.</summary>
     public static Mesh CreateQuadMesh(float sizeX, float sizeZ, float y, string name, bool withUVs = true)
@@ -67,7 +97,8 @@ public class VisualsUtility : MonoBehaviour
         float hx = sizeX * 0.5f;
         float hz = sizeZ * 0.5f;
 
-        Vector3[] verts = {
+        Vector3[] verts =
+        {
             new Vector3(-hx, y, -hz),
             new Vector3( hx, y, -hz),
             new Vector3( hx, y,  hz),
@@ -81,7 +112,8 @@ public class VisualsUtility : MonoBehaviour
         mesh.triangles = tris;
         if (withUVs)
         {
-            mesh.uv = new Vector2[] {
+            mesh.uv = new Vector2[]
+            {
                 new Vector2(0, 0), new Vector2(1, 0),
                 new Vector2(1, 1), new Vector2(0, 1),
             };
@@ -90,16 +122,15 @@ public class VisualsUtility : MonoBehaviour
         mesh.RecalculateBounds();
         return mesh;
     }
-    
-    /// <summary>
-    /// Box with 3 submeshes: 0 = top, 1 = bottom, 2 = sides.
-    /// Used by straight conveyors.
-    /// </summary>
+
+    // ------------------------------------------------------------------
+    // Boxes
+    // ------------------------------------------------------------------
     public static Mesh CreateBoxMeshSubmeshes(Vector3 size, Vector3 centre, string name)
     {
         Vector3 h = size * 0.5f;
-
-        Vector3[] verts = {
+        Vector3[] verts =
+        {
             centre + new Vector3(-h.x, -h.y, -h.z),
             centre + new Vector3( h.x, -h.y, -h.z),
             centre + new Vector3( h.x, -h.y,  h.z),
@@ -110,114 +141,155 @@ public class VisualsUtility : MonoBehaviour
             centre + new Vector3(-h.x,  h.y,  h.z),
         };
 
-        int[] top    = { 4, 6, 5, 4, 7, 6 };
-        int[] bottom = { 0, 1, 2, 0, 2, 3 };
-        // -X, +X only (matches previous straight belt sides set)
-        int[] sides  = { 0, 3, 7, 0, 7, 4, 1, 6, 2, 1, 5, 6 };
-
         var mesh = new Mesh { name = name };
         mesh.vertices = verts;
         mesh.subMeshCount = 3;
-        mesh.SetTriangles(top, 0);
-        mesh.SetTriangles(bottom, 1);
-        mesh.SetTriangles(sides, 2);
+        mesh.SetTriangles(new[] { 4, 6, 5, 4, 7, 6 }, 0);
+        mesh.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 1);
+        mesh.SetTriangles(new[] { 0, 3, 7, 0, 7, 4, 1, 6, 2, 1, 5, 6 }, 2);
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         return mesh;
     }
-    
-public static Mesh CreateEndCapMeshEllipse(string name)
-{
-    float height     = ConveyorConfig.BeltHeight;
-    float curveMax = ConveyorConfig.EndCapArcCurve;
-    float a          = 0.5f;
-    int   segments   = Mathf.Max(4, ConveyorConfig.CurveSegments);
 
-    const float ox = 0.5f;
-    const float oz = 0.5f;
+    public static Mesh CreateBoxMesh(Vector3 size, Vector3 centre, string name)
+        => CreateBoxMeshSubmeshes(size, centre, name);
 
-    // ------------------------------------------------------------------
-    // Ellipse XZ samples (y = 0), tile-centred — computed once
-    // ------------------------------------------------------------------
-    var ellipseXZ = new List<Vector3>(segments + 1);
-    for (int i = 0; i <= segments; i++)
+    static void AppendBox(List<Vector3> verts, List<int> tris, Vector3 c, Vector3 h)
     {
-        float t     = i / (float)segments;
-        float angle = Mathf.Lerp(-Mathf.PI * 0.5f, Mathf.PI * 0.5f, t);
+        int o = verts.Count;
+        verts.Add(c + new Vector3(-h.x, -h.y, -h.z));
+        verts.Add(c + new Vector3( h.x, -h.y, -h.z));
+        verts.Add(c + new Vector3( h.x, -h.y,  h.z));
+        verts.Add(c + new Vector3(-h.x, -h.y,  h.z));
+        verts.Add(c + new Vector3(-h.x,  h.y, -h.z));
+        verts.Add(c + new Vector3( h.x,  h.y, -h.z));
+        verts.Add(c + new Vector3( h.x,  h.y,  h.z));
+        verts.Add(c + new Vector3(-h.x,  h.y,  h.z));
 
-        float x = curveMax * Mathf.Cos(angle);
-        float z = 0.5f + a * Mathf.Sin(angle);
-        ellipseXZ.Add(new Vector3(x - ox, 0f, z - oz));
+        int[] local =
+        {
+            4,6,5, 4,7,6,  0,1,2, 0,2,3,
+            0,3,7, 0,7,4,  1,5,6, 1,6,2,
+            0,4,5, 0,5,1,  3,2,6, 3,6,7
+        };
+        foreach (int i in local) tris.Add(o + i);
     }
 
-    Vector3 WithY(Vector3 xz, float y) => new Vector3(xz.x, y, xz.z);
+    public static Mesh CreateStraightGuardRailMesh()
+    {
+        float hw = ConveyorConfig.HalfBeltWidth;
+        float rw = ConveyorConfig.GuardRailWidth;
+        float rh = ConveyorConfig.GuardRailHeight;
+        float hz = ConveyorConfig.HalfBeltLength;
+        Vector3 half = new Vector3(rw * 0.5f, rh * 0.5f, hz);
 
-    var verts      = new List<Vector3>();
-    var topTris    = new List<int>();
-    var bottomTris = new List<int>();
-    var sideTris   = new List<int>();
+        var verts = new List<Vector3>(16);
+        var tris  = new List<int>(72);
+        AppendBox(verts, tris, new Vector3(-hw + rw * 0.5f, 0f, 0f), half);
+        AppendBox(verts, tris, new Vector3( hw - rw * 0.5f, 0f, 0f), half);
+        return FinishMesh("StraightGuardRailMesh", verts.ToArray(), tris.ToArray());
+    }
 
     // ------------------------------------------------------------------
-    // Vertices from shared XZ list
+    // Endcap + curved rail
     // ------------------------------------------------------------------
-    int bottomArcStart = verts.Count;
-    foreach (var p in ellipseXZ)
-        verts.Add(WithY(p, 0f));
+   public static Mesh CreateEndCapMeshEllipse(string name)
+{
+    float height   = ConveyorConfig.BeltHeight;
+    int   segments = Mathf.Max(4, ConveyorConfig.CurveSegments);
+
+    var ring = SampleHalfEllipse(
+        ConveyorConfig.EndCapArcCurve,
+        ConveyorConfig.HalfBeltWidth,
+        segments);
+
+    var verts = new List<Vector3>();
+    var top   = new List<int>();
+    var bot   = new List<int>();
+    var side  = new List<int>();
+
+    int bottomArc = verts.Count;
+    foreach (var p in ring)
+        verts.Add(new Vector3(p.x, 0f, p.z));
 
     int bottomCentre = verts.Count;
-    verts.Add(new Vector3(0f - ox, 0f, 0.5f - oz));
+    verts.Add(new Vector3(-0.5f, 0f, 0f));
 
-    int topArcStart = verts.Count;
-    foreach (var p in ellipseXZ)
-        verts.Add(WithY(p, height));
+    int topArc = verts.Count;
+    foreach (var p in ring)
+        verts.Add(new Vector3(p.x, height, p.z));
 
     int topCentre = verts.Count;
-    verts.Add(new Vector3(0f - ox, height, 0.5f - oz));
-    
-    // ------------------------------------------------------------------
-    // Top deck fan
-    // ------------------------------------------------------------------
+    verts.Add(new Vector3(-0.5f, height, 0f));
+
     for (int i = 0; i < segments; i++)
     {
-        topTris.Add(topCentre);
-        topTris.Add(topArcStart + i + 1);
-        topTris.Add(topArcStart + i);
+        top.Add(topCentre); top.Add(topArc + i + 1); top.Add(topArc + i);
+        bot.Add(bottomCentre); bot.Add(bottomArc + i); bot.Add(bottomArc + i + 1);
+
+        int b0 = bottomArc + i, b1 = bottomArc + i + 1;
+        int t0 = topArc + i,    t1 = topArc + i + 1;
+        side.Add(b0); side.Add(t0); side.Add(t1);
+        side.Add(b0); side.Add(t1); side.Add(b1);
     }
 
-    // ------------------------------------------------------------------
-    // Bottom fan
-    // ------------------------------------------------------------------
-    for (int i = 0; i < segments; i++)
-    {
-        bottomTris.Add(bottomCentre);
-        bottomTris.Add(bottomArcStart + i);
-        bottomTris.Add(bottomArcStart + i + 1);
-    }
-
-    // ------------------------------------------------------------------
-    // Curved wall (bottom → deck)
-    // ------------------------------------------------------------------
-    for (int i = 0; i < segments; i++)
-    {
-        int b0 = bottomArcStart + i;
-        int b1 = bottomArcStart + i + 1;
-        int t0 = topArcStart + i;
-        int t1 = topArcStart + i + 1;
-
-        sideTris.Add(b0); sideTris.Add(t0); sideTris.Add(t1);
-        sideTris.Add(b0); sideTris.Add(t1); sideTris.Add(b1);
-    }
-    
     var mesh = new Mesh { name = name };
     mesh.SetVertices(verts);
     mesh.subMeshCount = 3;
-    mesh.SetTriangles(topTris, 0);
-    mesh.SetTriangles(bottomTris, 1);
-    mesh.SetTriangles(sideTris, 2);
+    mesh.SetTriangles(top, 0);
+    mesh.SetTriangles(bot, 1);
+    mesh.SetTriangles(side, 2);
     mesh.RecalculateNormals();
     mesh.RecalculateBounds();
     return mesh;
 }
-    
-    
+
+public static Mesh CreateEndCapGuardRailMesh()
+{
+    int   segments = Mathf.Max(4, ConveyorConfig.CurveSegments);
+    float thick    = ConveyorConfig.GuardRailWidth;
+    float hy       = ConveyorConfig.GuardRailHeight * 0.5f;
+
+    float outerR = ConveyorConfig.EndCapArcCurve;
+    float innerR = Mathf.Max(0f, outerR - thick);
+    float outerA = ConveyorConfig.HalfBeltWidth;
+    float innerA = Mathf.Max(0f, outerA - thick);
+
+    var outer = SampleHalfEllipse(outerR, outerA, segments);
+    var inner = SampleHalfEllipse(innerR, innerA, segments);
+
+    var verts = new List<Vector3>();
+    var tris  = new List<int>();
+
+    for (int i = 0; i <= segments; i++)
+    {
+        verts.Add(outer[i] + Vector3.up * -hy);
+        verts.Add(inner[i] + Vector3.up * -hy);
+        verts.Add(inner[i] + Vector3.up *  hy);
+        verts.Add(outer[i] + Vector3.up *  hy);
+    }
+
+    void Quad(int a0, int b0, int c0, int d0)
+    {
+        tris.Add(a0); tris.Add(c0); tris.Add(b0);
+        tris.Add(a0); tris.Add(d0); tris.Add(c0);
+    }
+
+    for (int i = 0; i < segments; i++)
+    {
+        int p = i * 4, q = (i + 1) * 4;
+        Quad(p + 3, q + 3, q + 2, p + 2);
+        Quad(p + 0, p + 1, q + 1, q + 0);
+        Quad(p + 0, q + 0, q + 3, p + 3);
+        Quad(p + 1, p + 2, q + 2, q + 1);
+    }
+
+    int s = 0, e = segments * 4;
+    Quad(s + 0, s + 3, s + 2, s + 1);
+    Quad(e + 0, e + 1, e + 2, e + 3);
+
+    return FinishMesh("EndCapGuardRailMesh", verts.ToArray(), tris.ToArray());
 }
+}
+#endif

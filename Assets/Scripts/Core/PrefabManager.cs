@@ -9,10 +9,28 @@ public class PrefabManager : MonoBehaviour
     public GameObject groundPrefab;
     
     [Header("Conveyors")]
-    public static GameObject[] straightPrefabs = new GameObject[5];
+    public  GameObject[] straightPrefabs = new GameObject[5];
+    public GameObject endCapPrefab;
     
     [Header("Arrow")]
     public GameObject straightArrowPrefab;
+    
+    [Header("GuardRail")]
+    public GameObject guardRailPrefab;
+    public GameObject endCapGuardRailPrefab;
+
+    public static string EndCapGuardRailMeshPath =>
+        PathingConfig.EndCapFolder + "EndCapGuardRailMesh.asset";
+    public static string EndCapGuardRailPrefabPath =>
+        PathingConfig.EndCapFolder + "EndCapGuardRail.prefab";
+
+    public static string GuardRailMeshPath =>
+        PathingConfig.StraightFolder + "GuardRailMesh.asset";
+    public static string GuardRailPrefabPath =>
+        PathingConfig.StraightFolder + "GuardRail.prefab";
+    
+    public static string EndCapPrefabPath =>
+        PathingConfig.EndCapFolder + "EndCapConveyor.prefab";
     
     void Awake()
     {
@@ -34,8 +52,13 @@ public class PrefabManager : MonoBehaviour
             "Prefabs/Logistics/Ground/Ground");
         
         straightPrefabs = LoadLevelPrefabs(PathingConfig.StraightFolder, "StraightConveyor_L");
+        endCapPrefab = LoadSingle(
+            PathingConfig.EndCapFolder + "EndCapConveyor.prefab",
+            "Prefabs/Logistics/EndCapConveyor");
 
         straightArrowPrefab = EnsureArrowPrefab();
+        guardRailPrefab = EnsureGuardRailPrefab();
+        endCapGuardRailPrefab = EnsureEndCapGuardRailPrefab();
     }
     
    GameObject[] LoadLevelPrefabs(string folder, string baseName)
@@ -72,6 +95,52 @@ public class PrefabManager : MonoBehaviour
         return prefab;
     }
     
+    public static GameObject EnsureMeshPrefab(
+        string prefabPath, string meshPath, string objectName, System.Func<Mesh> buildMesh)
+    {
+        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        if (existing != null) return existing;
+
+        PathingUtility.EnsureAllFolders();
+        var mat = VisualsUtility.GetOrCreateMaterial("ConveyorGuardRail", ConveyorConfig.GuardRailColor);
+        var mesh = buildMesh();
+        AssetDatabase.CreateAsset(mesh, meshPath);
+
+        var root = new GameObject(objectName);
+        root.AddComponent<MeshFilter>().sharedMesh = mesh;
+        root.AddComponent<MeshRenderer>().sharedMaterial = mat;
+
+        var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+        Object.DestroyImmediate(root);
+        return prefab;
+    }
+
+    public static GameObject EnsureGuardRailPrefab() =>
+        EnsureMeshPrefab(GuardRailPrefabPath, GuardRailMeshPath, "GuardRail",
+            VisualsUtility.CreateStraightGuardRailMesh);
+
+    public static GameObject EnsureEndCapGuardRailPrefab() =>
+        EnsureMeshPrefab(EndCapGuardRailPrefabPath, EndCapGuardRailMeshPath, "EndCapGuardRail",
+            VisualsUtility.CreateEndCapGuardRailMesh);
+    
+    static GameObject InstantiateRail(GameObject prefab, Transform parent)
+    {
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        go.name = "GuardRail";
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = new Vector3(
+            0f, ConveyorConfig.BeltHeight + ConveyorConfig.GuardRailHeight * 0.5f, 0f);
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = Vector3.one;
+        return go;
+    }
+
+    public static GameObject InstantiateGuardRail(Transform parent) =>
+        InstantiateRail(EnsureGuardRailPrefab(), parent);
+
+    public static GameObject InstantiateEndCapGuardRail(Transform parent) =>
+        InstantiateRail(EnsureEndCapGuardRailPrefab(), parent);
+    
     public static GameObject EnsureArrowPrefab()
     {
         GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(ArrowConfig.ArrowPrefabPath);
@@ -96,6 +165,7 @@ public class PrefabManager : MonoBehaviour
         return prefab;
     }
     
+    
     public static GameObject InstantiateArrow(
         Transform parent, string name, Vector3 localPos, Quaternion localRot, float scale = 1f)
     {
@@ -109,7 +179,8 @@ public class PrefabManager : MonoBehaviour
         return arrow;
     }
     
-    public static GameObject GetStraight(int level)  => straightPrefabs[Mathf.Clamp(level - 1, 0, 4)];
+    public GameObject GetStraight(int level) => straightPrefabs[Mathf.Clamp(level - 1, 0, 4)];
 
+    public GameObject GetEndCap() => endCapPrefab;
 
 }
