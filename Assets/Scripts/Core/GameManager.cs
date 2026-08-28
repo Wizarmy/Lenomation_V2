@@ -4,19 +4,19 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     [Header("Belt loops")]
-    public bool spawnLoopOnStart = true;
-    public Vector2Int loopOrigin = new Vector2Int(4, 0);
-    [Min(2)] public int loopSizeX = 8;
-    [Min(2)] public int loopSizeZ = 6;
+    public bool spawnLoopsOnStart = true;
+    public Vector2Int[] loopOrigins =
+    {
+        new Vector2Int(-3,  3),
+        new Vector2Int( 3,  3),
+        new Vector2Int(-3, -3),
+        new Vector2Int( 3, -3),
+    };
+    [Min(2)] public int loopSize = 3;
 
-    public bool spawnReverseLoop = true;
-    public Vector2Int reverseLoopOrigin = new Vector2Int(-8, 0);
-    [Min(2)] public int reverseLoopSizeX = 8;
-    [Min(2)] public int reverseLoopSizeZ = 6;
-    
     [Header("Packages")]
-    public int packagesPerLoop = 6;
-    
+    public int packagesPerLoop = 4;
+
     static readonly Color[] PackageColors =
     {
         new Color(0.85f, 0.25f, 0.20f),
@@ -26,8 +26,6 @@ public class GameManager : MonoBehaviour
         new Color(0.70f, 0.30f, 0.80f),
         new Color(0.95f, 0.55f, 0.15f),
     };
- 
-
 
     void Start()
     {
@@ -39,26 +37,60 @@ public class GameManager : MonoBehaviour
 
         SpawnGround();
 
-      
+        if (!spawnLoopsOnStart) return;
 
-        if (spawnLoopOnStart)
+        int size = Mathf.Max(2, loopSize);
+        for (int i = 0; i < loopOrigins.Length; i++)
         {
-            SpawnBeltLoop(loopOrigin, loopSizeX, loopSizeZ, reverse: false);
-            SpawnLoopPackages(loopOrigin, loopSizeX, loopSizeZ, packagesPerLoop);
+            bool reverse = (i & 1) == 1;
+            SpawnBeltLoop(loopOrigins[i], size, size, reverse);
+            SpawnLoopPackages(loopOrigins[i], size, size, packagesPerLoop);
         }
-
-        if (spawnReverseLoop)
-        {
-            SpawnBeltLoop(reverseLoopOrigin, reverseLoopSizeX, reverseLoopSizeZ, reverse: true);
-            SpawnLoopPackages(reverseLoopOrigin, reverseLoopSizeX, reverseLoopSizeZ, packagesPerLoop);
-        }
+        
+        SpawnInserter(new Vector2Int( 0,  3), new Vector2Int(1,  3), new Vector2Int( -1,  3));
+        SpawnInserter(new Vector2Int(-3,  0), new Vector2Int(-3,  1), new Vector2Int(-3, -1));
+        SpawnInserter(new Vector2Int( 0, -3), new Vector2Int(-1, -3), new Vector2Int( 1, -3));
+        SpawnInserter(new Vector2Int( 3,  0), new Vector2Int( 3,  -1), new Vector2Int( 3, 1));
     }
-    
-    
 
-    /// <summary>
-    /// Closed rectangle of belts. sizeX / sizeZ are cell counts (inclusive), minimum 2.
-    /// </summary>
+    public void SpawnInserter(Vector2Int cell, Vector2Int pickupCell, Vector2Int dropOffCell)
+    {
+        var pm = PrefabManager.Instance;
+        var cm = ConveyorManager.Instance;
+        if (pm == null || pm.GetInserter() == null || cm == null) return;
+
+        Vector3 world = new Vector3(cell.x + 0.5f, 0f, cell.y + 0.5f);
+        var go = Instantiate(pm.GetInserter(), world, Quaternion.identity);
+        go.name = $"Inserter_{cell.x}_{cell.y}";
+
+        var placeable = go.GetComponent<Placeable>();
+        if (placeable != null)
+            placeable.SetGridPosition(cell);
+
+        var ins = go.GetComponent<Inserter>();
+        if (ins == null) return;
+
+        ins.Connect(
+            SocketAt(cm, pickupCell),
+            SocketAt(cm, dropOffCell));
+    }
+
+    static ConnectionPoint SocketAt(ConveyorManager cm, Vector2Int cell)
+    {
+        Conveyor belt = cm.GetAt(cell);
+        if (belt == null)
+        {
+            Debug.LogWarning($"No belt at {cell} to connect.");
+            return null;
+        }
+        if (belt.connectionPoint == null)
+        {
+            Debug.LogWarning($"Belt at {cell} has no ConnectionPoint. Rebuild conveyor prefabs.");
+            return null;
+        }
+        return belt.connectionPoint;
+    }
+
     public void SpawnBeltLoop(Vector2Int origin, int sizeX, int sizeZ, bool reverse = false)
     {
         var cm = ConveyorManager.Instance;
@@ -72,29 +104,26 @@ public class GameManager : MonoBehaviour
         int x1 = x0 + sizeX - 1;
         int z1 = z0 + sizeZ - 1;
 
-        // Same yaws both ways. Reverse = Clockwise straights + AntiClockwise corners.
         var cornerDir   = reverse ? BeltDirection.Clockwise : BeltDirection.AntiClockwise;
-        var straightDir = reverse ? BeltDirection.Clockwise    : BeltDirection.AntiClockwise;
+        var straightDir = reverse ? BeltDirection.Clockwise : BeltDirection.AntiClockwise;
 
-        //270,0,90,180 - 180,90,0,270
-        
         cm.PlaceCorner(new Vector2Int(x0, z0), 270f, 1, cornerDir);
-        cm.PlaceCorner(new Vector2Int(x0, z1),   0f, 1,cornerDir);
-        cm.PlaceCorner(new Vector2Int(x1, z1),  90f, 1,cornerDir);
-        cm.PlaceCorner(new Vector2Int(x1, z0), 180f, 1,cornerDir);
+        cm.PlaceCorner(new Vector2Int(x0, z1),   0f, 1, cornerDir);
+        cm.PlaceCorner(new Vector2Int(x1, z1),  90f, 1, cornerDir);
+        cm.PlaceCorner(new Vector2Int(x1, z0), 180f, 1, cornerDir);
 
         for (int z = z0 + 1; z <= z1 - 1; z++)
         {
-            cm.PlaceStraight(new Vector2Int(x0, z), 180f,   1, straightDir);
-            cm.PlaceStraight(new Vector2Int(x1, z), 0f, 1, straightDir);
+            cm.PlaceStraight(new Vector2Int(x0, z), 180f, 1, straightDir);
+            cm.PlaceStraight(new Vector2Int(x1, z),   0f, 1, straightDir);
         }
         for (int x = x0 + 1; x <= x1 - 1; x++)
         {
-            cm.PlaceStraight(new Vector2Int(x, z0), 90f, 1, straightDir);
-            cm.PlaceStraight(new Vector2Int(x, z1), 270f,  1, straightDir);
+            cm.PlaceStraight(new Vector2Int(x, z0),  90f, 1, straightDir);
+            cm.PlaceStraight(new Vector2Int(x, z1), 270f, 1, straightDir);
         }
     }
-    
+
     void SpawnLoopPackages(Vector2Int origin, int sizeX, int sizeZ, int count)
     {
         var cells = LoopCells(origin, sizeX, sizeZ);
@@ -113,7 +142,7 @@ public class GameManager : MonoBehaviour
             TintPackage(rider.gameObject, c);
         }
     }
-    
+
     static List<Vector2Int> LoopCells(Vector2Int origin, int sizeX, int sizeZ)
     {
         sizeX = Mathf.Max(2, sizeX);
@@ -124,10 +153,10 @@ public class GameManager : MonoBehaviour
         int z1 = z0 + sizeZ - 1;
 
         var cells = new List<Vector2Int>();
-        for (int x = x0; x <= x1; x++) cells.Add(new Vector2Int(x, z0));       // south
-        for (int z = z0 + 1; z <= z1; z++) cells.Add(new Vector2Int(x1, z));    // east
-        for (int x = x1 - 1; x >= x0; x--) cells.Add(new Vector2Int(x, z1));    // north
-        for (int z = z1 - 1; z > z0; z--) cells.Add(new Vector2Int(x0, z));     // west
+        for (int x = x0; x <= x1; x++) cells.Add(new Vector2Int(x, z0));
+        for (int z = z0 + 1; z <= z1; z++) cells.Add(new Vector2Int(x1, z));
+        for (int x = x1 - 1; x >= x0; x--) cells.Add(new Vector2Int(x, z1));
+        for (int z = z1 - 1; z > z0; z--) cells.Add(new Vector2Int(x0, z));
         return cells;
     }
 
@@ -136,13 +165,7 @@ public class GameManager : MonoBehaviour
         var pkg = go.GetComponent<Package>();
         if (pkg != null)
         {
-            pkg.topColor    = Color.Lerp(color, Color.white, 0.15f);
-            pkg.bottomColor = color * 0.55f;
-            pkg.frontColor  = color;
-            pkg.backColor   = color * 0.85f;
-            pkg.leftColor   = color * 0.9f;
-            pkg.rightColor  = color * 0.9f;
-            pkg.Apply();
+            pkg.SetColor(color);
             return;
         }
 

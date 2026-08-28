@@ -14,6 +14,9 @@ public class PrefabManager : MonoBehaviour
     public GameObject endCapPrefab;
     public GameObject linkPrefab;
     
+    [Header("Inserters")]
+    public GameObject inserterPrefab;
+    
     [Header("Items")]
     public GameObject packagePrefab;
     
@@ -71,7 +74,9 @@ public class PrefabManager : MonoBehaviour
             PackageConfig.PrefabPath,
             "Prefabs/Logistics/Items/Package");
 
-
+        // in LoadAllPrefabs:
+        inserterPrefab = LoadSingle(InserterConfig.PrefabPath, "Prefabs/Logistics/Inserters/Inserter");
+        
         straightArrowPrefab = EnsureArrowPrefab();
         guardRailPrefab = EnsureGuardRailPrefab();
         endCapGuardRailPrefab = EnsureEndCapGuardRailPrefab();
@@ -201,5 +206,6 @@ public class PrefabManager : MonoBehaviour
     public GameObject GetLink() => linkPrefab;
     public GameObject GetCorner(int level) => cornerPrefabs[Mathf.Clamp(level - 1, 0, 4)];
     public GameObject GetPackage() => packagePrefab;
+    public GameObject GetInserter() => inserterPrefab;
 
 }

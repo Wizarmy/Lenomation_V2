@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Conveyor : Placeable
@@ -20,6 +21,7 @@ public class Conveyor : Placeable
     [Header("Ports (null on EndCap)")]
     public Transform entryPoint;
     public Transform exitPoint;
+    public ConnectionPoint connectionPoint;
 
     public bool HasEntry => !isEndCap && entryPoint != null;
     public bool HasExit  => !isEndCap && exitPoint != null;
@@ -27,10 +29,14 @@ public class Conveyor : Placeable
     [Header("Connection (auto-detected)")]
     public Conveyor nextConveyor;
     public Conveyor previousConveyor;
+    
+    public readonly List<PackageRider> riders = new List<PackageRider>();
 
     float pathLength;
     Transform cachedTransform;
     bool arrowsNeedFlip;
+    
+    public event System.Action RidersChanged;
 
     public float PathLength => pathLength;
 
@@ -197,5 +203,18 @@ public class Conveyor : Placeable
             if (child.name.StartsWith("Arrow"))
                 child.localRotation *= Quaternion.Euler(0f, 180f, 0f);
         }
+    }
+    
+    public void RegisterRider(PackageRider rider)
+    {
+        if (rider != null && !riders.Contains(rider))
+            riders.Add(rider);
+        RidersChanged?.Invoke();
+    }
+
+    public void UnregisterRider(PackageRider rider)
+    {
+        if (riders.Remove(rider))
+            RidersChanged?.Invoke();
     }
 }

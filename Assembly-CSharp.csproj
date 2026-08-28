@@ -57,6 +57,7 @@
     <Compile Include="Assets\Scripts\Utlity\VisualsUtility.cs" />
     <Compile Include="Assets\Scripts\Logistics\Package.cs" />
     <Compile Include="Assets\Scripts\Configs\ConveyorConfig.cs" />
+    <Compile Include="Assets\Scripts\Logistics\Inserter.cs" />
     <Compile Include="Assets\Scripts\Configs\GridConfig.cs" />
     <Compile Include="Assets\Scripts\Core\PrefabManager.cs" />
     <Compile Include="Assets\Scripts\Utlity\VertexDebug.cs" />
@@ -64,9 +65,12 @@
     <Compile Include="Assets\Scripts\Utlity\ArrowPlacement.cs" />
     <Compile Include="Assets\Scripts\Logistics\PackageRider.cs" />
     <Compile Include="Assets\Scripts\Logistics\ConveyorPieceType.cs" />
+    <Compile Include="Assets\Scripts\Logistics\ConnectionPoint.cs" />
     <Compile Include="Assets\Scripts\Configs\PathingConfig.cs" />
+    <Compile Include="Assets\Scripts\Logistics\ConnectionType.cs" />
     <Compile Include="Assets\Scripts\Logistics\Conveyor.cs" />
     <Compile Include="Assets\Scripts\Core\Placeable.cs" />
+    <Compile Include="Assets\Scripts\Configs\InserterConfig.cs" />
     <Compile Include="Assets\Scripts\Core\ConveyorManager.cs" />
     <Compile Include="Assets\Scripts\Configs\GroundConfig.cs" />
     <Compile Include="Assets\Scripts\Configs\ArrowConfig.cs" />

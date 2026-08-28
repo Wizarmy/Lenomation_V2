@@ -206,8 +206,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalRotation: {x: 0.25744238, y: -0.21164376, z: 0.05789913, w: 0.9410516}
+  m_LocalPosition: {x: 1.6665187, y: 3.9856284, z: -5.786622}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -528,21 +528,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17596862bc3cb7d479447c832df79269, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  clearExistingOnStart: 1
-  placeDebugBelts: 0
-  spawnLoopOnStart: 1
-  loopOrigin: {x: 0, y: 0}
-  loopSizeX: 6
-  loopSizeZ: 4
-  spawnReverseLoop: 1
-  reverseLoopOrigin: {x: -8, y: 0}
-  reverseLoopSizeX: 8
-  reverseLoopSizeZ: 6
-  spawnStraightTest: 0
-  straightTestOrigin: {x: 0, y: 8}
-  straightTestLength: 4
-  spawnCornerTest: 0
-  cornerTestOrigin: {x: 12, y: 8}
+  spawnLoopsOnStart: 1
+  loopOrigins:
+  - {x: -3, y: 3}
+  - {x: 3, y: 3}
+  - {x: -3, y: -3}
+  - {x: 3, y: -3}
+  loopSize: 5
+  packagesPerLoop: 6
 --- !u!4 &1375818895
 Transform:
   m_ObjectHideFlags: 0
@@ -577,9 +570,15 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
-  cornerPrefab: {fileID: 0}
+  cornerPrefabs:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   endCapPrefab: {fileID: 0}
   linkPrefab: {fileID: 0}
+  inserterPrefab: {fileID: 0}
   packagePrefab: {fileID: 0}
   straightArrowPrefab: {fileID: 0}
   guardRailPrefab: {fileID: 0}

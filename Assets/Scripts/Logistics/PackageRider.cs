@@ -4,13 +4,35 @@ public class PackageRider : MonoBehaviour
 {
     public Conveyor Current { get; private set; }
     public float Distance { get; private set; }
-    
 
     public void Attach(Conveyor belt, float distance = 0f)
     {
-        Current = belt;
+        if (Current != null)
+            Current.UnregisterRider(this);
+
+        Current  = belt;
         Distance = Mathf.Max(0f, distance);
+
+        if (Current != null)
+            Current.RegisterRider(this);
+
+        enabled = true;
         Snap();
+    }
+
+    public void Detach()
+    {
+        if (Current != null)
+            Current.UnregisterRider(this);
+
+        Current = null;
+        enabled = false;
+    }
+
+    void OnDisable()
+    {
+        if (Current != null)
+            Current.UnregisterRider(this);
     }
 
     void Update()
@@ -28,7 +50,10 @@ public class PackageRider : MonoBehaviour
                 Distance = Current.PathLength;
                 break;
             }
+
+            Current.UnregisterRider(this);
             Current = next;
+            Current.RegisterRider(this);
             Distance = overflow;
         }
 

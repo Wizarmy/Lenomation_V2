@@ -7,49 +7,31 @@ public static class ItemPrefabCreator
     [MenuItem("Automation/Create Item Prefabs")]
     public static void CreateItemPrefabs()
     {
-        PathingUtility.EnsureAllFolders();
-        PathingUtility.DeleteFolderAndRecreate(PathingConfig.ItemFolder);
+        PrefabBuildUtility.BeginBuild(PathingConfig.ItemFolder);
 
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-
-        var top    = VisualsUtility.GetOrCreateMaterial("PackageTop",    PackageConfig.DefaultTop);
-        var bottom = VisualsUtility.GetOrCreateMaterial("PackageBottom", PackageConfig.DefaultBottom);
-        var front  = VisualsUtility.GetOrCreateMaterial("PackageFront",  PackageConfig.DefaultFront);
-        var back   = VisualsUtility.GetOrCreateMaterial("PackageBack",   PackageConfig.DefaultBack);
-        var left   = VisualsUtility.GetOrCreateMaterial("PackageLeft",   PackageConfig.DefaultLeft);
-        var right  = VisualsUtility.GetOrCreateMaterial("PackageRight",  PackageConfig.DefaultRight);
+        var mat = VisualsUtility.GetOrCreateMaterial("Package", PackageConfig.DefaultColor);
+        var mats = new[] { mat, mat, mat, mat, mat, mat };
 
         float s = PackageConfig.PackageSize;
-        var mesh = VisualsUtility.CreateCubeMeshSixFaces(new Vector3(s, s, s), "PackageMesh");
-        AssetDatabase.CreateAsset(mesh, PackageConfig.MeshPath);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        mesh = AssetDatabase.LoadAssetAtPath<Mesh>(PackageConfig.MeshPath);
+        Mesh mesh = PrefabBuildUtility.WriteMesh(
+            PackageConfig.MeshPath,
+            VisualsUtility.CreateCubeMeshSixFaces(new Vector3(s, s, s), "PackageMesh"));
 
-        var root = new GameObject("Package");
-        root.AddComponent<MeshFilter>().sharedMesh = mesh;
-        var rend = root.AddComponent<MeshRenderer>();
-        rend.sharedMaterials = new[] { top, bottom, front, back, left, right };
-
-        var col = root.AddComponent<BoxCollider>();
-        col.size = Vector3.one * s;
-        col.center = Vector3.zero;
+        var root = PrefabBuildUtility.CreateRoot("Package", mesh, mats);
+        PrefabBuildUtility.AddBoxCollider(root, Vector3.one * s, Vector3.zero);
 
         var pkg = root.AddComponent<Package>();
-        pkg.topColor    = PackageConfig.DefaultTop;
-        pkg.bottomColor = PackageConfig.DefaultBottom;
-        pkg.frontColor  = PackageConfig.DefaultFront;
-        pkg.backColor   = PackageConfig.DefaultBack;
-        pkg.leftColor   = PackageConfig.DefaultLeft;
-        pkg.rightColor  = PackageConfig.DefaultRight;
+        pkg.color = PackageConfig.DefaultColor;
+        
+        var box = root.AddComponent<BoxCollider>();
+        box.size = Vector3.one * PackageConfig.PackageSize;
 
-        PrefabUtility.SaveAsPrefabAsset(root, PackageConfig.PrefabPath);
-        Object.DestroyImmediate(root);
+        var rb = root.AddComponent<Rigidbody>();
+        rb.isKinematic = true;
+        rb.useGravity = false;
 
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        Debug.Log("Package prefab created: " + PackageConfig.PrefabPath);
+        PrefabBuildUtility.SavePrefab(root, PackageConfig.PrefabPath);
+        PrefabBuildUtility.FinishBuild("Package prefab created: " + PackageConfig.PrefabPath);
     }
 }
 #endif

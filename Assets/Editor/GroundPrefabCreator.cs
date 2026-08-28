@@ -8,42 +8,21 @@ public static class GroundPrefabCreator
     public static void CreateGroundPrefab()
     {
         PathingUtility.EnsureAllFolders();
-        // Ensure the Ground subfolder exists
-        if (!AssetDatabase.IsValidFolder(PathingConfig.GroundFolder.TrimEnd('/')))
-            AssetDatabase.CreateFolder(PathingConfig.PrefabFolder.TrimEnd('/'), "Ground");
+        PathingUtility.DeleteIfExists(PathingConfig.GroundFolder + "Ground.prefab");
+        PathingUtility.DeleteIfExists(PathingConfig.GroundFolder + "GroundMesh.asset");
+        PathingUtility.DeleteIfExists(PathingConfig.MaterialFolder + "Ground.mat");
 
-        PathingUtility.DeleteIfExists($"{PathingConfig.GroundFolder}Ground.prefab");
-        PathingUtility.DeleteIfExists($"{PathingConfig.GroundFolder}GroundMesh.asset");
-        PathingUtility.DeleteIfExists($"{PathingConfig.MaterialFolder}Ground.mat");
+        var mat = VisualsUtility.GetOrCreateMaterial("Ground", GroundConfig.GroundColor);
+        Mesh mesh = PrefabBuildUtility.WriteMesh(
+            PathingConfig.GroundFolder + "GroundMesh.asset",
+            VisualsUtility.CreateQuadMesh(
+                GroundConfig.GroundSize, GroundConfig.GroundSize,
+                GroundConfig.GroundY, "GroundMesh"));
 
-        Material mat = VisualsUtility.GetOrCreateMaterial("Ground", GroundConfig.GroundColor);
-
-        Mesh mesh = VisualsUtility.CreateQuadMesh(
-            GroundConfig.GroundSize,
-            GroundConfig.GroundSize,
-            GroundConfig.GroundY,
-            "GroundMesh");
-        AssetDatabase.CreateAsset(mesh, $"{PathingConfig.GroundFolder}GroundMesh.asset");
-
-        GameObject root = new GameObject("Ground");
-        var mf = root.AddComponent<MeshFilter>();
-        mf.sharedMesh = mesh;
-
-        var mr = root.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = mat;
-
-        // Simple collider so raycasts / placement can hit it later
-        var col = root.AddComponent<MeshCollider>();
-        col.sharedMesh = mesh;
-        
-        string path = $"{PathingConfig.GroundFolder}Ground.prefab";
-        PrefabUtility.SaveAsPrefabAsset(root, path);
-        Object.DestroyImmediate(root);
-
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        Debug.Log("Ground prefab created successfully.");
+        var root = PrefabBuildUtility.CreateRoot("Ground", mesh, mat);
+        PrefabBuildUtility.AddMeshCollider(root, mesh);
+        PrefabBuildUtility.SavePrefab(root, PathingConfig.GroundFolder + "Ground.prefab");
+        PrefabBuildUtility.FinishBuild("Ground prefab created successfully.");
     }
-    
 }
 #endif

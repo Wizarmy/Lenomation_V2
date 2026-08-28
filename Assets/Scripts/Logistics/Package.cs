@@ -1,19 +1,10 @@
 using UnityEngine;
 
-/// <summary>
-/// Cube package. Six faces, independent colours. Optional texture on the top face.
-/// Materials are instanced so Inspector / runtime changes do not dirty the prefab.
-/// </summary>
 [ExecuteAlways]
 public class Package : MonoBehaviour
 {
-    [Header("Faces")]
-    public Color topColor    = PackageConfig.DefaultTop;
-    public Color bottomColor = PackageConfig.DefaultBottom;
-    public Color frontColor  = PackageConfig.DefaultFront;
-    public Color backColor   = PackageConfig.DefaultBack;
-    public Color leftColor   = PackageConfig.DefaultLeft;
-    public Color rightColor  = PackageConfig.DefaultRight;
+    [Header("Colour")]
+    public Color color = PackageConfig.DefaultColor;
 
     [Header("Top image (optional)")]
     public Texture topImage;
@@ -35,17 +26,9 @@ public class Package : MonoBehaviour
         Apply();
     }
 
-    public void SetFaceColor(int face, Color color)
+    public void SetColor(Color c)
     {
-        switch (face)
-        {
-            case PackageConfig.FaceTop:    topColor    = color; break;
-            case PackageConfig.FaceBottom: bottomColor = color; break;
-            case PackageConfig.FaceFront:  frontColor  = color; break;
-            case PackageConfig.FaceBack:   backColor   = color; break;
-            case PackageConfig.FaceLeft:   leftColor   = color; break;
-            case PackageConfig.FaceRight:  rightColor  = color; break;
-        }
+        color = c;
         Apply();
     }
 
@@ -60,12 +43,8 @@ public class Package : MonoBehaviour
         EnsureInstances();
         if (faceMats == null || faceMats.Length < 6) return;
 
-        SetFace(PackageConfig.FaceTop,    topColor,    topImage);
-        SetFace(PackageConfig.FaceBottom, bottomColor, null);
-        SetFace(PackageConfig.FaceFront,  frontColor,  null);
-        SetFace(PackageConfig.FaceBack,   backColor,   null);
-        SetFace(PackageConfig.FaceLeft,   leftColor,   null);
-        SetFace(PackageConfig.FaceRight,  rightColor,  null);
+        for (int i = 0; i < 6; i++)
+            SetFace(i, color, i == PackageConfig.FaceTop ? topImage : null);
 
         if (cachedRenderer != null)
             cachedRenderer.sharedMaterials = faceMats;
@@ -93,27 +72,22 @@ public class Package : MonoBehaviour
         }
     }
 
-    void SetFace(int index, Color color, Texture tex)
+    void SetFace(int index, Color faceColor, Texture tex)
     {
         Material mat = faceMats[index];
         if (mat == null) return;
 
         Color tint = tex != null
-            ? Color.Lerp(Color.white, color, topImageTint)
-            : color;
+            ? Color.Lerp(Color.white, faceColor, topImageTint)
+            : faceColor;
 
-        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", tint);
-        if (mat.HasProperty("_Color"))     mat.SetColor("_Color", tint);
         mat.color = tint;
-
-        if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
-        if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
+        mat.mainTexture = tex;
     }
 
-    static Material NewUnlit(Color color)
+    static Material NewUnlit(Color c)
     {
         var shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null) shader = Shader.Find("Unlit/Color");
-        return new Material(shader) { color = color };
+        return new Material(shader) { color = c };
     }
 }
