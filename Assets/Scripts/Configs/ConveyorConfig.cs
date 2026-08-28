@@ -21,7 +21,7 @@ public static class ConveyorConfig
     // ConveyorConfig
     public const float GuardRailWidth  = 0.01f;
     public const float GuardRailHeight = 0.03f;
-    public static readonly Color GuardRailColor = new Color(0.5f, 0.5f, 0.55f);
+    public static readonly Color GuardRailColor = new Color(0.1f, 0.1f, 0.1f);
     
     public const float EndCapArcCurve = 1f / 32f;
     

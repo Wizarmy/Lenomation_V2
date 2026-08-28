@@ -529,6 +529,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   clearExistingOnStart: 1
+  placeDebugBelts: 0
+  spawnLoopOnStart: 1
+  loopOrigin: {x: 0, y: 0}
+  loopSizeX: 6
+  loopSizeZ: 4
+  spawnReverseLoop: 1
+  reverseLoopOrigin: {x: -8, y: 0}
+  reverseLoopSizeX: 8
+  reverseLoopSizeZ: 6
+  spawnStraightTest: 0
+  straightTestOrigin: {x: 0, y: 8}
+  straightTestLength: 4
+  spawnCornerTest: 0
+  cornerTestOrigin: {x: 12, y: 8}
 --- !u!4 &1375818895
 Transform:
   m_ObjectHideFlags: 0
@@ -557,7 +571,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrefabManager
   groundPrefab: {fileID: 0}
+  straightPrefabs:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  cornerPrefab: {fileID: 0}
+  endCapPrefab: {fileID: 0}
+  linkPrefab: {fileID: 0}
+  packagePrefab: {fileID: 0}
   straightArrowPrefab: {fileID: 0}
+  guardRailPrefab: {fileID: 0}
+  endCapGuardRailPrefab: {fileID: 0}
 --- !u!114 &1375818897
 MonoBehaviour:
   m_ObjectHideFlags: 0

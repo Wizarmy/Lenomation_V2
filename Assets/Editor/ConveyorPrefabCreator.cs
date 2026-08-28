@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
@@ -78,10 +79,13 @@ public static void CreateConveyorPrefabs()
 
     // 5. Prefabs using the reloaded meshes
     for (int level = 1; level <= 5; level++)
+    {
         CreateStraightPrefab(level, straightMesh, top, bottom, side);
+        CreateCornerPrefab(level,cornerMesh, railMesh, top, bottom, side);
+    }
 
-    CreateCornerPrefab(cornerMesh, railMesh, top, bottom, side);
-    
+
+
     CreateEndCapPrefab(endCapMesh, top, bottom, capMat);
     CreateLinkPrefab(linkMesh, top, bottom, side);
 
@@ -125,10 +129,10 @@ public static void CreateConveyorPrefabs()
         Object.DestroyImmediate(root);
     }
     
-    static void CreateCornerPrefab(Mesh mesh, Mesh railMesh, Material top, Material bottom, Material side)
+    static void CreateCornerPrefab(int level,Mesh mesh, Mesh railMesh, Material top, Material bottom, Material side)
     {
-        string path = PathingConfig.CornerFolder + "CornerConveyor.prefab";
-        var root = CreateBase("CornerConveyor", mesh, new[] { top, bottom, side }, false);
+        string path = $"{PathingConfig.CornerFolder}CornerConveyor_L{level}.prefab";
+        var root = CreateBase($"CornerConveyor_L{level}", mesh, new[] { top, bottom, side }, false);
         AddConveyorComponent(root, 1, ConveyorPieceType.Corner);
 
         float y = ConveyorConfig.BeltHeight;
@@ -145,6 +149,8 @@ public static void CreateConveyorPrefabs()
         var conv = root.GetComponent<Conveyor>();
         conv.entryPoint = entry;
         conv.exitPoint  = exit;
+        
+        AddArrowsForLevel(root, level,true);
 
         var railGo = new GameObject("GuardRail");
         railGo.transform.SetParent(root.transform, false);
@@ -215,25 +221,44 @@ public static void CreateConveyorPrefabs()
         conv.exitPoint  = exit;
     }
 
-    static void AddArrowsForLevel(GameObject root, int level)
+    static void AddArrowsForLevel(GameObject root, int level, bool isCorner=false)
     {
-        var positions = GetPositionsStraight(level);
-        float side = ConveyorConfig.BeltWidth * 0.5f;
-
-        for (int i = 0; i < level; i++)
+        if (!isCorner)
         {
-            Vector3 pos = positions[i];
-            PrefabManager.InstantiateArrow(root.transform, $"Arrow_L{i + 1}_Left",
-                new Vector3(-side, pos.y, pos.z), Quaternion.Euler(0f, 0f, 90f));
-            PrefabManager.InstantiateArrow(root.transform, $"Arrow_L{i + 1}_Right",
-                new Vector3(side, pos.y, pos.z), Quaternion.Euler(0f, 0f, 90f));
+
+            var positions = GetPositionsStraight(level);
+            float side = ConveyorConfig.BeltWidth * 0.5f;
+
+            for (int i = 0; i < level; i++)
+            {
+                Vector3 pos = positions[i];
+                PrefabManager.InstantiateArrow(root.transform, $"Arrow_L{i + 1}_Left",
+                    new Vector3(-side, pos.y, pos.z), Quaternion.Euler(0f, 0f, 90f));
+                PrefabManager.InstantiateArrow(root.transform, $"Arrow_L{i + 1}_Right",
+                    new Vector3(side, pos.y, pos.z), Quaternion.Euler(0f, 0f, 90f));
+            }
+        }
+        else
+        {
+            var arrowPlacements = GetPositionsCorner(level);
+
+            for (int i = 0; i < level; i++)
+            {
+                var placement = arrowPlacements[i];
+
+                PrefabManager.InstantiateArrow(
+                    root.transform,
+                    $"Arrow_{i + 1}",
+                    placement.position,
+                    Quaternion.Euler(0f, placement.angle, 90f));
+            }
         }
     }
 
-    static System.Collections.Generic.List<Vector3> GetPositionsStraight(int level)
+    static List<Vector3> GetPositionsStraight(int level)
     {
         level = Mathf.Clamp(level, 1, 5);
-        var list = new System.Collections.Generic.List<Vector3>();
+        var list = new List<Vector3>();
         float y = ConveyorConfig.BeltHeight * 0.5f;
         float spacing = ConveyorConfig.ArrowSpacing;
         float startZ = -((level - 1) * spacing) * 0.5f;
@@ -241,5 +266,40 @@ public static void CreateConveyorPrefabs()
             list.Add(new Vector3(0f, y, startZ + i * spacing));
         return list;
     }
+    
+    public static List<ArrowPlacement> GetPositionsCorner(int level)
+    {
+        level = Mathf.Clamp(level, 1, 5);
+
+        float outerRadius = ConveyorConfig.CornerOuterRadius;
+        Vector3 centreOffset = new Vector3(0.5f, ConveyorConfig.HalfBeltHeight, -0.5f);
+        float angleGap = 10f;
+
+        // How far the group of arrows is shifted so it stays centred
+        float groupOffset = ((level - 1) / 2) * angleGap;
+
+        // Starting angle of the first arrow (the group is centred around 135°)
+        float startAngle = 135f - groupOffset;
+
+        var placements = new List<ArrowPlacement>();
+
+        for (int i = 0; i < level; i++)
+        {
+            float pathAngle = startAngle + (i * angleGap);          // position on the curve
+            float arrowYAngle = 45f + groupOffset - (i * angleGap); // rotation of the arrow itself
+
+            float rad = pathAngle * Mathf.Deg2Rad;
+            Vector3 pos = new Vector3(
+                Mathf.Cos(rad) * outerRadius,
+                0f,
+                Mathf.Sin(rad) * outerRadius
+            ) + centreOffset;
+
+            placements.Add(new ArrowPlacement(arrowYAngle, pos));
+        }
+
+        return placements;
+    }
+    
 }
 #endif

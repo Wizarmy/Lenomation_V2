@@ -69,7 +69,7 @@ public class ConveyorManager : MonoBehaviour
         return conv;
     }
 
-    public Conveyor PlaceCorner(Vector2Int cell, float yRotation = 0f,
+    public Conveyor PlaceCorner(Vector2Int cell, float yRotation = 0f,int beltLevel=1,
                                 BeltDirection travel = BeltDirection.Clockwise)
     {
         if (grid.ContainsKey(cell))
@@ -78,7 +78,7 @@ public class ConveyorManager : MonoBehaviour
             return null;
         }
 
-        GameObject prefab = PrefabManager.Instance.GetCorner();
+        GameObject prefab = PrefabManager.Instance.GetCorner(beltLevel);
         if (prefab == null) return null;
 
         GameObject go = Instantiate(prefab, Vector3.zero, Quaternion.Euler(0f, yRotation, 0f));
@@ -204,6 +204,10 @@ public class ConveyorManager : MonoBehaviour
         conv.previousConveyor = linksIn ? prev : null;
         if (linksIn)
             prev.nextConveyor = conv;
+        
+        conv.RecalcPathLength();
+        if (conv.nextConveyor     != null) conv.nextConveyor.RecalcPathLength();
+        if (conv.previousConveyor != null) conv.previousConveyor.RecalcPathLength();
 
         if (linksIn)  DestroyChild(conv, EntryCapName);
         else          EnsureCap(conv, entry: true);
@@ -240,6 +244,9 @@ public class ConveyorManager : MonoBehaviour
 
         float alongZ = ConveyorConfig.HalfBeltLength + ConveyorConfig.LinkLength * 0.5f;
         if (!exit) alongZ = -alongZ;
+
+        if (conv.direction == BeltDirection.Clockwise)
+            alongZ = -alongZ;
 
         var go = Instantiate(prefab, conv.transform);
         go.name = childName;
@@ -325,25 +332,21 @@ public class ConveyorManager : MonoBehaviour
     static void GetCapLocal(Conveyor conv, bool entry, out Vector3 localPos, out float yaw)
     {
         float dist = CoreConfig.TileSize - CoreConfig.DistanceFromTileEdge;
+        float cornerDist = CoreConfig.TileSize; // origin in next tile; mesh flat sits back on the edge
 
         if (conv.isCorner)
         {
-            // Default corner: entry -Z, exit +X
-            if (entry)
+            bool acw = conv.direction == BeltDirection.AntiClockwise;
+
+            if (entry ^ acw)
             {
-                localPos = new Vector3(0f, 0f, -dist);
+                localPos = new Vector3(0f, 0f, -cornerDist);
                 yaw = 90f;
             }
             else
             {
-                localPos = new Vector3(dist, 0f, 0f);
-                yaw = 0f; // bulge +X already faces out; tweak if the cap looks wrong
-            }
-
-            if (conv.direction == BeltDirection.AntiClockwise)
-            {
-                localPos = -localPos;
-                yaw += 180f;
+                localPos = new Vector3(cornerDist, 0f, 0f);
+                yaw = 0f;
             }
             return;
         }
@@ -405,10 +408,9 @@ public class ConveyorManager : MonoBehaviour
         if (!conv.isCorner)
             return new Vector2Int(-TravelDir(conv).x, -TravelDir(conv).y);
 
-        // Default: in from local -Z. AntiClockwise: in from local -X.
         Vector3 inn = conv.direction == BeltDirection.AntiClockwise
-            ? -conv.transform.right
-            : -conv.transform.forward;
+            ?  conv.transform.right      // feeder on local +X
+            : -conv.transform.forward;   // feeder on local −Z
 
         return ToCardinal(inn);
     }
@@ -440,5 +442,32 @@ public class ConveyorManager : MonoBehaviour
         yield return cell + Vector2Int.down;
         yield return cell + Vector2Int.left;
         yield return cell + Vector2Int.right;
+    }
+    
+    public PackageRider SpawnPackage(Vector2Int cell)
+    {
+        Conveyor belt = GetAt(cell);
+        if (belt == null) return null;
+
+        GameObject prefab = PrefabManager.Instance != null
+            ? PrefabManager.Instance.GetPackage()
+            : null;
+
+        GameObject go;
+        if (prefab != null)
+        {
+            go = Instantiate(prefab);
+        }
+        else
+        {
+            go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.transform.localScale = Vector3.one * PackageConfig.PackageSize;
+        }
+
+        go.name = "Package";
+        var rider = go.GetComponent<PackageRider>();
+        if (rider == null) rider = go.AddComponent<PackageRider>();
+        rider.Attach(belt, 0f);
+        return rider;
     }
 }

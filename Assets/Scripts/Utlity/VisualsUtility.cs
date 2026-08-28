@@ -398,5 +398,59 @@ public static Mesh CreateCornerGuardRailMesh()
     Ring(outer);
     return FinishMesh("CornerGuardRailMesh", verts.ToArray(), tris.ToArray());
 }
+    /// <summary>
+    /// Unit-centred cube, 6 submeshes: Top, Bottom, Front(+Z), Back(−Z), Left(−X), Right(+X).
+    /// Each face has 0..1 UVs so a top image maps cleanly.
+    /// </summary>
+    public static Mesh CreateCubeMeshSixFaces(Vector3 size, string name)
+    {
+        Vector3 h = size * 0.5f;
+
+        Vector3[] verts =
+        {
+            // Top +Y
+            new Vector3(-h.x,  h.y, -h.z), new Vector3(-h.x,  h.y,  h.z),
+            new Vector3( h.x,  h.y,  h.z), new Vector3( h.x,  h.y, -h.z),
+            // Bottom −Y
+            new Vector3(-h.x, -h.y,  h.z), new Vector3(-h.x, -h.y, -h.z),
+            new Vector3( h.x, -h.y, -h.z), new Vector3( h.x, -h.y,  h.z),
+            // Front +Z
+            new Vector3(-h.x, -h.y,  h.z), new Vector3( h.x, -h.y,  h.z),
+            new Vector3( h.x,  h.y,  h.z), new Vector3(-h.x,  h.y,  h.z),
+            // Back −Z
+            new Vector3( h.x, -h.y, -h.z), new Vector3(-h.x, -h.y, -h.z),
+            new Vector3(-h.x,  h.y, -h.z), new Vector3( h.x,  h.y, -h.z),
+            // Left −X
+            new Vector3(-h.x, -h.y, -h.z), new Vector3(-h.x, -h.y,  h.z),
+            new Vector3(-h.x,  h.y,  h.z), new Vector3(-h.x,  h.y, -h.z),
+            // Right +X
+            new Vector3( h.x, -h.y,  h.z), new Vector3( h.x, -h.y, -h.z),
+            new Vector3( h.x,  h.y, -h.z), new Vector3( h.x,  h.y,  h.z),
+        };
+
+        Vector2[] uvs =
+        {
+            new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0),
+            new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0),
+            new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1),
+            new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1),
+            new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1),
+            new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1),
+        };
+
+        var mesh = new Mesh { name = name };
+        mesh.vertices = verts;
+        mesh.uv = uvs;
+        mesh.subMeshCount = 6;
+        for (int i = 0; i < 6; i++)
+        {
+            int o = i * 4;
+            mesh.SetTriangles(new[] { o, o + 1, o + 2, o, o + 2, o + 3 }, i);
+        }
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
 }
 #endif
