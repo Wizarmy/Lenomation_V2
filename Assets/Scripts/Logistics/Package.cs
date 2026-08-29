@@ -3,6 +3,15 @@ using UnityEngine;
 [ExecuteAlways]
 public class Package : MonoBehaviour
 {
+    [Header("Item")]
+    public ItemId itemId = ItemId.None;
+
+    public void SetItem(ItemId id)
+    {
+        itemId = id;
+        SetColor(ItemConfig.Color(id));
+    }
+    
     [Header("Colour")]
     public Color color = PackageConfig.DefaultColor;
 

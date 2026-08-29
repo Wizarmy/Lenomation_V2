@@ -56,6 +56,7 @@
   <ItemGroup>
     <Compile Include="Assets\Editor\PrefabBuildUtility.cs" />
     <Compile Include="Assets\Editor\ItemPrefabCreator.cs" />
+    <Compile Include="Assets\Editor\CreateContainerPrefab.cs" />
     <Compile Include="Assets\Editor\GroundPrefabCreator.cs" />
     <Compile Include="Assets\Editor\InserterPrefabCreator.cs" />
     <Compile Include="Assets\Editor\ConveyorPrefabCreator.cs" />

@@ -55,6 +55,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\Utlity\VisualsUtility.cs" />
+    <Compile Include="Assets\Scripts\Configs\ItemConfig.cs" />
+    <Compile Include="Assets\Scripts\Configs\ContainerConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\Package.cs" />
     <Compile Include="Assets\Scripts\Configs\ConveyorConfig.cs" />
     <Compile Include="Assets\Scripts\Logistics\Inserter.cs" />
@@ -71,6 +73,7 @@
     <Compile Include="Assets\Scripts\Logistics\Conveyor.cs" />
     <Compile Include="Assets\Scripts\Core\Placeable.cs" />
     <Compile Include="Assets\Scripts\Configs\InserterConfig.cs" />
+    <Compile Include="Assets\Scripts\Logistics\Container.cs" />
     <Compile Include="Assets\Scripts\Core\ConveyorManager.cs" />
     <Compile Include="Assets\Scripts\Configs\GroundConfig.cs" />
     <Compile Include="Assets\Scripts\Configs\ArrowConfig.cs" />

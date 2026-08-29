@@ -7,26 +7,23 @@ public class PackageRider : MonoBehaviour
 
     public void Attach(Conveyor belt, float distance = 0f)
     {
-        if (Current != null)
-            Current.UnregisterRider(this);
-
-        Current  = belt;
+        SetBelt(belt);
         Distance = Mathf.Max(0f, distance);
-
-        if (Current != null)
-            Current.RegisterRider(this);
-
-        enabled = true;
-        Snap();
+        enabled = belt != null;
+        if (belt != null)
+            Snap();
     }
 
     public void Detach()
     {
-        if (Current != null)
-            Current.UnregisterRider(this);
-
-        Current = null;
+        SetBelt(null);
         enabled = false;
+    }
+
+    void OnEnable()
+    {
+        if (Current != null)
+            Current.RegisterRider(this);
     }
 
     void OnDisable()
@@ -39,25 +36,103 @@ public class PackageRider : MonoBehaviour
     {
         if (Current == null) return;
 
-        Distance += Current.PathLength / Current.PathDuration * Time.deltaTime;
+        float speed = Current.PathLength / Current.PathDuration;
+        float nextDist = Distance + speed * Time.deltaTime;
+        float cap = ForwardLimit();
 
-        while (Current != null && Distance >= Current.PathLength)
+        if (nextDist >= cap && CanHop(out Conveyor next, out float overflow))
         {
-            float overflow = Distance - Current.PathLength;
-            Conveyor next = Current.nextConveyor;
-            if (next == null)
-            {
-                Distance = Current.PathLength;
-                break;
-            }
-
-            Current.UnregisterRider(this);
-            Current = next;
-            Current.RegisterRider(this);
+            SetBelt(next);
             Distance = overflow;
+        }
+        else
+        {
+            Distance = Mathf.Min(nextDist, cap);
         }
 
         Snap();
+    }
+
+    float ForwardLimit()
+    {
+        float space = PackageConfig.MinSpacing;
+        float cap = Current.PathLength;
+
+        if (Current.nextConveyor == null)
+            cap -= PackageConfig.HalfPackageSize;
+        else
+            cap = Mathf.Min(cap, LimitFromNext(Current.nextConveyor, space));
+
+        var list = Current.riders;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var other = list[i];
+            if (other == null || other == this || !other.enabled) continue;
+            if (other.Distance > Distance + 1e-4f)
+                cap = Mathf.Min(cap, other.Distance - space);
+        }
+
+        return Mathf.Max(Distance, cap);
+    }
+
+    float LimitFromNext(Conveyor next, float space)
+    {
+        float minN = float.PositiveInfinity;
+        var list = next.riders;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var other = list[i];
+            if (other == null || !other.enabled) continue;
+            minN = Mathf.Min(minN, other.Distance);
+        }
+        if (minN > 1e8f)
+            return Current.PathLength;
+
+        Vector3 start = Current.EvaluatePosition(0f);
+        Vector3 npos  = next.EvaluatePosition(minN);
+        Vector3 delta = npos - start;
+        delta.y = 0f;
+
+        Vector3 unit = Current.EvaluateForward(0f);
+        float along = Vector3.Dot(delta, unit);
+        return along - space;
+    }
+
+    bool CanHop(out Conveyor next, out float overflow)
+    {
+        next = Current.nextConveyor;
+        overflow = Distance - Current.PathLength;
+        if (next == null || overflow < 0f) return false;
+        return !EntryBlocked(next, overflow);
+    }
+
+    static bool EntryBlocked(Conveyor belt, float incomingDist)
+    {
+        float space = PackageConfig.MinSpacing;
+        Vector3 incoming = belt.EvaluatePosition(Mathf.Max(0f, incomingDist));
+        incoming.y = 0f;
+
+        var list = belt.riders;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var other = list[i];
+            if (other == null || !other.enabled) continue;
+            Vector3 p = other.transform.position;
+            p.y = 0f;
+            if ((p - incoming).sqrMagnitude < space * space)
+                return true;
+        }
+        return false;
+    }
+
+    void SetBelt(Conveyor belt)
+    {
+        if (Current == belt) return;
+        if (Current != null)
+            Current.UnregisterRider(this);
+        Current = belt;
+        if (Current != null)
+            Current.RegisterRider(this);
     }
 
     void Snap()
@@ -66,7 +141,6 @@ public class PackageRider : MonoBehaviour
 
         Vector3 p = Current.EvaluatePosition(Distance);
         p.y = ConveyorConfig.BeltHeight + PackageConfig.HalfPackageSize;
-        transform.position = p;
-        transform.rotation = Current.EvaluateRotation(Distance);
+        transform.SetPositionAndRotation(p, Current.EvaluateRotation(Distance));
     }
 }

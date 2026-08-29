@@ -18,6 +18,7 @@ public class Inserter : MonoBehaviour
     }
 
     const float DropGap = 1.25f;
+    const float LiftArrive = 0.002f;
 
     [Header("Pose")]
     public float yaw;
@@ -44,7 +45,27 @@ public class Inserter : MonoBehaviour
     float boomY;
     float liftY;
     Package held;
-    Conveyor boundDropBelt;
+    Conveyor pickupBelt;
+    Conveyor dropBelt;
+    Container pickupBox;
+    Container dropBox;
+
+    public Conveyor PickupBelt  => pickupBelt;
+    public Conveyor DropOffBelt => dropBelt;
+    
+    Vector3 HoldLocal => new Vector3(
+        0f, 0f,
+        InserterConfig.MagnetHeight + PackageConfig.HalfPackageSize);
+    
+    bool InGrabRange(Package pkg)
+    {
+        if (pkg == null || grab == null) return false;
+        Vector3 dest = grab.TransformPoint(HoldLocal);
+        Vector3 p = pkg.transform.position;
+        dest.y = p.y;
+        float arrive = PackageConfig.HalfPackageSize * 0.35f;
+        return (p - dest).sqrMagnitude <= arrive * arrive;
+    }
 
     void Awake()
     {
@@ -55,21 +76,17 @@ public class Inserter : MonoBehaviour
 
     void OnEnable()
     {
-        BindPad(pickup, true);
-        BindPad(dropOff, true);
-        BindDropBelt(true);
+        BindPads(true);
+        CacheSockets();
     }
 
     void OnDisable()
     {
-        BindPad(pickup, false);
-        BindPad(dropOff, false);
-        BindDropBelt(false);
+        BindPads(false);
     }
 
     void Start()
     {
-        BindDropBelt(true);
         CacheSockets();
         if (pickup != null)
             BeginPickup();
@@ -83,18 +100,11 @@ public class Inserter : MonoBehaviour
 
     public void Connect(ConnectionPoint pick, ConnectionPoint drop)
     {
-        BindPad(pickup, false);
-        BindPad(dropOff, false);
-        BindDropBelt(false);
-
+        BindPads(false);
         pickup  = pick;
         dropOff = drop;
-
-        BindPad(pickup, true);
-        BindPad(dropOff, true);
-        BindDropBelt(true);
+        BindPads(true);
         CacheSockets();
-
         if (pickup != null)
             BeginPickup();
     }
@@ -121,51 +131,57 @@ public class Inserter : MonoBehaviour
         phase = Phase.Retract;
     }
 
-    public Conveyor PickupBelt  =>
-        pickup  != null ? pickup.GetComponentInParent<Conveyor>()  : null;
-
-    public Conveyor DropOffBelt =>
-        dropOff != null ? dropOff.GetComponentInParent<Conveyor>() : null;
-
-    void BindPad(ConnectionPoint pad, bool on)
+    void BindPads(bool on)
     {
-        if (pad == null) return;
+        BindPickupPad(on);
+        BindDropPad(on);
+        BindSockets(on);
+    }
 
-        if (pad == pickup)
+    void BindPickupPad(bool on)
+    {
+        if (pickup == null) return;
+        if (on) pickup.PackageEntered += OnPickupEntered;
+        else    pickup.PackageEntered -= OnPickupEntered;
+    }
+
+    void BindDropPad(bool on)
+    {
+        if (dropOff == null) return;
+        if (on)
         {
-            if (on) pad.PackageEntered += OnPickupEntered;
-            else    pad.PackageEntered -= OnPickupEntered;
+            dropOff.PackageEntered += OnDropEntered;
+            dropOff.PackageExited  += OnDropExited;
         }
-
-        if (pad == dropOff)
+        else
         {
-            if (on)
-            {
-                pad.PackageEntered += OnDropEntered;
-                pad.PackageExited  += OnDropExited;
-            }
-            else
-            {
-                pad.PackageEntered -= OnDropEntered;
-                pad.PackageExited  -= OnDropExited;
-            }
+            dropOff.PackageEntered -= OnDropEntered;
+            dropOff.PackageExited  -= OnDropExited;
         }
     }
 
-    void BindDropBelt(bool on)
+    void BindSockets(bool on)
     {
-        if (boundDropBelt != null)
-            boundDropBelt.RidersChanged -= OnDropRidersChanged;
+        if (dropBelt != null)
+            dropBelt.RidersChanged -= OnDropRidersChanged;
+        if (dropBox != null)
+            dropBox.ContentsChanged -= OnDropContentsChanged;
 
-        boundDropBelt = on ? DropOffBelt : null;
+        pickupBelt = pickup  != null ? pickup.GetComponentInParent<Conveyor>()  : null;
+        pickupBox  = pickup  != null ? pickup.GetComponentInParent<Container>() : null;
+        dropBelt   = on && dropOff != null ? dropOff.GetComponentInParent<Conveyor>()  : null;
+        dropBox    = on && dropOff != null ? dropOff.GetComponentInParent<Container>() : null;
 
-        if (boundDropBelt != null)
-            boundDropBelt.RidersChanged += OnDropRidersChanged;
+        if (dropBelt != null)
+            dropBelt.RidersChanged += OnDropRidersChanged;
+        if (dropBox != null)
+            dropBox.ContentsChanged += OnDropContentsChanged;
     }
 
     void OnPickupEntered(Package pkg)
     {
         if (phase != Phase.Attach || pkg == null || pkg == held) return;
+        if (!CanTake(pkg)) return;
         Take(pkg);
         phase = Phase.Lift;
     }
@@ -173,19 +189,19 @@ public class Inserter : MonoBehaviour
     void OnDropEntered(Package pkg)
     {
         if (pkg == null || pkg == held) return;
+        if (dropBox != null) return;
+        if (dropBelt != null)
+        {
+            var rider = pkg.GetComponent<PackageRider>();
+            if (rider == null || rider.Current != dropBelt) return;
+        }
         if (phase == Phase.ExtendDrop || phase == Phase.Release)
             phase = Phase.WaitDrop;
     }
 
-    void OnDropExited(Package pkg)
-    {
-        TryResumeDrop();
-    }
-
-    void OnDropRidersChanged()
-    {
-        TryResumeDrop();
-    }
+    void OnDropExited(Package pkg)   => TryResumeDrop();
+    void OnDropRidersChanged()       => TryResumeDrop();
+    void OnDropContentsChanged()     => TryResumeDrop();
 
     void TryResumeDrop()
     {
@@ -196,19 +212,14 @@ public class Inserter : MonoBehaviour
 
     bool DropPadClear()
     {
-        if (dropOff == null) return false;
+        if (dropBox != null)
+            return !dropBox.IsFull;
+        if (dropBelt == null)
+            return dropOff == null || dropOff.Occupant == null || dropOff.Occupant == held;
 
-        Package occ = dropOff.Occupant;
-        if (occ != null && occ != held)
-            return false;
-
-        Conveyor belt = DropOffBelt;
-        if (belt == null)
-            return occ == null || occ == held;
-
-        float pad  = belt.PathLength * 0.5f;
-        float need = PackageConfig.PackageSize * DropGap;
-        return !BeltBlocked(belt, pad, need);
+        float pad  = dropBelt.PathLength * 0.5f;
+        float need = PackageConfig.MinSpacing;
+        return !BeltBlocked(dropBelt, pad, need);
     }
 
     bool BeltBlocked(Conveyor belt, float dist, float need)
@@ -232,6 +243,65 @@ public class Inserter : MonoBehaviour
         phase = Phase.ExtendDrop;
     }
 
+    bool CanTake(Package pkg)
+    {
+        if (pkg == null || pkg == held) return false;
+        if (pickupBox != null) return false;
+
+        if (pickupBelt != null)
+        {
+            var rider = pkg.GetComponent<PackageRider>();
+            return rider != null && rider.enabled && rider.Current == pickupBelt;
+        }
+
+        return true;
+    }
+
+    void TryGrab()
+    {
+        if (held != null || phase != Phase.Attach) return;
+
+        if (pickupBox != null)
+        {
+            if (pickupBox.TryExtract(out Package fromBox))
+            {
+                Take(fromBox);
+                phase = Phase.Lift;
+            }
+            return;
+        }
+
+        Package cand = pickup != null ? pickup.Occupant : null;
+        if (!CanTake(cand))
+            cand = NearestRiderPackage(pickupBelt);
+
+        if (cand == null || !CanTake(cand) || !InGrabRange(cand))
+            return;
+
+        OnPickupEntered(cand);
+    }
+
+    static Package NearestRiderPackage(Conveyor belt)
+    {
+        if (belt == null) return null;
+        float pad = belt.PathLength * 0.5f;
+        PackageRider best = null;
+        float bestAbs = float.MaxValue;
+        var list = belt.riders;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var r = list[i];
+            if (r == null || !r.enabled) continue;
+            float d = Mathf.Abs(r.Distance - pad);
+            if (d < bestAbs)
+            {
+                bestAbs = d;
+                best = r;
+            }
+        }
+        return best != null ? best.GetComponent<Package>() : null;
+    }
+
     void Take(Package pkg)
     {
         var rider = pkg.GetComponent<PackageRider>();
@@ -242,11 +312,11 @@ public class Inserter : MonoBehaviour
         if (col != null) col.enabled = false;
 
         held = pkg;
+        held.gameObject.SetActive(true);
         held.transform.SetParent(grab, true);
         held.transform.localRotation = Quaternion.identity;
         held.transform.localPosition = new Vector3(
-            0f,
-            0f,
+            0f, 0f,
             InserterConfig.MagnetHeight + PackageConfig.HalfPackageSize);
     }
 
@@ -266,15 +336,24 @@ public class Inserter : MonoBehaviour
         var col = pkg.GetComponent<Collider>();
         if (col != null) col.enabled = true;
 
-        Conveyor belt = DropOffBelt;
+        if (dropBox != null)
+        {
+            if (!dropBox.TryInsert(pkg))
+            {
+                held = pkg;
+                phase = Phase.WaitDrop;
+            }
+            return;
+        }
+
         var rider = pkg.GetComponent<PackageRider>();
         if (rider == null)
             rider = pkg.gameObject.AddComponent<PackageRider>();
 
-        if (belt != null)
+        if (dropBelt != null)
         {
             rider.enabled = true;
-            rider.Attach(belt, belt.PathLength * 0.5f);
+            rider.Attach(dropBelt, dropBelt.PathLength * 0.5f);
         }
         else
         {
@@ -287,113 +366,84 @@ public class Inserter : MonoBehaviour
         switch (phase)
         {
             case Phase.Retract:
-                extend = Mathf.MoveTowards(extend, 0f, InserterConfig.RetractSpeed * dt);
-                boomY  = Mathf.MoveTowards(boomY, InserterConfig.BoomHeight, InserterConfig.LiftSpeed * dt);
-                if (extend <= InserterConfig.ExtendArrive)
-                {
-                    extend = 0f;
-                    if (pickup != null)
-                    {
-                        targetYaw    = pickupYaw;
-                        targetExtend = pickupExtend;
-                        phase = Phase.SlewPickup;
-                    }
-                    else
-                    {
-                        phase = Phase.Idle;
-                    }
-                }
+                boomY = Mathf.MoveTowards(boomY, InserterConfig.BoomHeight, InserterConfig.LiftSpeed * dt);
+                if (!MoveExtend(0f, InserterConfig.RetractSpeed, dt)) break;
+                if (pickup == null) { phase = Phase.Idle; break; }
+                targetYaw    = pickupYaw;
+                targetExtend = pickupExtend;
+                phase = Phase.SlewPickup;
                 break;
 
             case Phase.SlewPickup:
-                yaw = Mathf.MoveTowardsAngle(yaw, targetYaw, InserterConfig.SlewSpeed * dt);
-                if (Mathf.Abs(Mathf.DeltaAngle(yaw, targetYaw)) <= InserterConfig.YawArrive)
-                {
-                    yaw   = targetYaw;
-                    phase = Phase.Extend;
-                }
+                if (!MoveYaw(targetYaw, dt)) break;
+                phase = Phase.Extend;
                 break;
 
             case Phase.Extend:
-                extend = Mathf.MoveTowards(extend, targetExtend, InserterConfig.ExtendSpeed * dt);
-                if (Mathf.Abs(extend - targetExtend) <= InserterConfig.ExtendArrive)
-                {
-                    extend = targetExtend;
-                    phase  = Phase.Attach;
-                    if (pickup != null && pickup.Occupant != null && pickup.Occupant != held)
-                        OnPickupEntered(pickup.Occupant);
-                }
+                if (!MoveExtend(targetExtend, InserterConfig.ExtendSpeed, dt)) break;
+                phase = Phase.Attach;
+                TryGrab();
                 break;
 
             case Phase.Attach:
+                TryGrab();
                 break;
 
             case Phase.Lift:
                 boomY = Mathf.MoveTowards(boomY, liftY, InserterConfig.LiftSpeed * dt);
-                if (Mathf.Abs(boomY - liftY) <= 0.002f)
-                {
-                    boomY = liftY;
-                    phase = Phase.RetractLoaded;
-                }
+                if (Mathf.Abs(boomY - liftY) > LiftArrive) break;
+                boomY = liftY;
+                phase = Phase.RetractLoaded;
                 break;
 
             case Phase.RetractLoaded:
-                extend = Mathf.MoveTowards(extend, 0f, InserterConfig.RetractSpeed * dt);
-                if (extend <= InserterConfig.ExtendArrive)
-                {
-                    extend = 0f;
-                    if (dropOff != null)
-                    {
-                        targetYaw = dropYaw;
-                        phase = Phase.SlewDrop;
-                    }
-                    else
-                    {
-                        phase = Phase.Idle;
-                    }
-                }
+                if (!MoveExtend(0f, InserterConfig.RetractSpeed, dt)) break;
+                if (dropOff == null) { phase = Phase.Idle; break; }
+                targetYaw = dropYaw;
+                phase = Phase.SlewDrop;
                 break;
 
             case Phase.SlewDrop:
-                yaw = Mathf.MoveTowardsAngle(yaw, targetYaw, InserterConfig.SlewSpeed * dt);
-                if (Mathf.Abs(Mathf.DeltaAngle(yaw, targetYaw)) <= InserterConfig.YawArrive)
-                {
-                    yaw   = targetYaw;
-                    phase = Phase.WaitDrop;
-                    if (DropPadClear())
-                        StartDropExtend();
-                }
+                if (!MoveYaw(targetYaw, dt)) break;
+                phase = Phase.WaitDrop;
+                if (DropPadClear())
+                    StartDropExtend();
                 break;
 
             case Phase.WaitDrop:
                 break;
 
             case Phase.ExtendDrop:
-                if (!DropPadClear())
-                {
-                    phase = Phase.WaitDrop;
-                    break;
-                }
-                extend = Mathf.MoveTowards(extend, targetExtend, InserterConfig.ExtendSpeed * dt);
-                if (Mathf.Abs(extend - targetExtend) <= InserterConfig.ExtendArrive)
-                {
-                    extend = targetExtend;
-                    phase  = Phase.Release;
-                }
+                if (!DropPadClear()) { phase = Phase.WaitDrop; break; }
+                if (!MoveExtend(targetExtend, InserterConfig.ExtendSpeed, dt)) break;
+                phase = Phase.Release;
                 break;
 
             case Phase.Release:
-                if (!DropPadClear())
-                {
-                    phase = Phase.WaitDrop;
-                    break;
-                }
+                if (!DropPadClear()) { phase = Phase.WaitDrop; break; }
                 PutDown();
-                if (phase == Phase.WaitDrop)
-                    break;
-                phase = Phase.Retract;
+                if (phase != Phase.WaitDrop)
+                    phase = Phase.Retract;
                 break;
         }
+    }
+
+    bool MoveYaw(float target, float dt)
+    {
+        yaw = Mathf.MoveTowardsAngle(yaw, target, InserterConfig.SlewSpeed * dt);
+        if (Mathf.Abs(Mathf.DeltaAngle(yaw, target)) > InserterConfig.YawArrive)
+            return false;
+        yaw = target;
+        return true;
+    }
+
+    bool MoveExtend(float target, float speed, float dt)
+    {
+        extend = Mathf.MoveTowards(extend, target, speed * dt);
+        if (Mathf.Abs(extend - target) > InserterConfig.ExtendArrive)
+            return false;
+        extend = target;
+        return true;
     }
 
     void ComputeTarget(ConnectionPoint point, out float yawDeg, out float ext)
@@ -413,12 +463,16 @@ public class Inserter : MonoBehaviour
 
     static float GrabReach(float t)
     {
+        float boom0Z = Mathf.Lerp(
+            InserterConfig.Boom0Nested,
+            InserterConfig.Boom0Size.z * 0.5f,
+            t);
         float s1 = SlideMax(InserterConfig.Boom0Size.z, InserterConfig.Boom1Size.z) * t;
         float s2 = SlideMax(InserterConfig.Boom1Size.z, InserterConfig.Boom2Size.z) * t;
-        return InserterConfig.Boom0Size.z * 0.5f
-             + s1 + s2
-             + InserterConfig.Boom2Size.z * 0.5f
-             + InserterConfig.MagnetHeight * 0.5f;
+        return boom0Z
+               + s1 + s2
+               + InserterConfig.Boom2Size.z * 0.5f
+               + InserterConfig.MagnetHeight * 0.5f;
     }
 
     static float ExtendForDistance(float dist)
@@ -447,6 +501,12 @@ public class Inserter : MonoBehaviour
         }
 
         float t = Mathf.Clamp01(extend);
+        if (boom0 != null)
+        {
+            float nested = InserterConfig.Boom0Nested;
+            float outZ   = InserterConfig.Boom0Size.z * 0.5f;
+            boom0.localPosition = new Vector3(0f, 0f, Mathf.Lerp(nested, outZ, t));
+        }
         Slide(boom1, InserterConfig.Boom0Size.z, InserterConfig.Boom1Size.z, t);
         Slide(boom2, InserterConfig.Boom1Size.z, InserterConfig.Boom2Size.z, t);
     }

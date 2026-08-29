@@ -252,7 +252,7 @@ public static class ConveyorPrefabCreator
 
         var cp = go.AddComponent<ConnectionPoint>();
         cp.kind = ConnectionType.Both;
-        cp.size = PackageConfig.PackageSize * 1.2f;
+        cp.size = PackageConfig.PackageSize;
 
         var col = go.AddComponent<BoxCollider>();
         col.isTrigger = true;

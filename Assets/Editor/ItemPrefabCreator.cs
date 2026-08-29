@@ -9,7 +9,7 @@ public static class ItemPrefabCreator
     {
         PrefabBuildUtility.BeginBuild(PathingConfig.ItemFolder);
 
-        var mat = VisualsUtility.GetOrCreateMaterial("Package", PackageConfig.DefaultColor);
+        var mat  = VisualsUtility.GetOrCreateMaterial("Package", PackageConfig.DefaultColor);
         var mats = new[] { mat, mat, mat, mat, mat, mat };
 
         float s = PackageConfig.PackageSize;
@@ -22,13 +22,10 @@ public static class ItemPrefabCreator
 
         var pkg = root.AddComponent<Package>();
         pkg.color = PackageConfig.DefaultColor;
-        
-        var box = root.AddComponent<BoxCollider>();
-        box.size = Vector3.one * PackageConfig.PackageSize;
 
         var rb = root.AddComponent<Rigidbody>();
         rb.isKinematic = true;
-        rb.useGravity = false;
+        rb.useGravity  = false;
 
         PrefabBuildUtility.SavePrefab(root, PackageConfig.PrefabPath);
         PrefabBuildUtility.FinishBuild("Package prefab created: " + PackageConfig.PrefabPath);

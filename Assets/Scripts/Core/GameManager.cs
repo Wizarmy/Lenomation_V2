@@ -12,31 +12,41 @@ public class GameManager : MonoBehaviour
         new Vector2Int(-3, -3),
         new Vector2Int( 3, -3),
     };
-    [Min(2)] public int loopSize = 3;
+    [Min(2)] public int loopSize = 5;
 
     [Header("Packages")]
     public int packagesPerLoop = 4;
-
-    static readonly Color[] PackageColors =
+    
+    struct InserterSpec
     {
-        new Color(0.85f, 0.25f, 0.20f),
-        new Color(0.20f, 0.55f, 0.85f),
-        new Color(0.25f, 0.70f, 0.30f),
-        new Color(0.90f, 0.75f, 0.15f),
-        new Color(0.70f, 0.30f, 0.80f),
-        new Color(0.95f, 0.55f, 0.15f),
+        public Vector2Int cell;
+        public Vector2Int pickup;
+        public Vector2Int drop;
+
+        public InserterSpec(int cx, int cz, int px, int pz, int dx, int dz)
+        {
+            cell   = new Vector2Int(cx, cz);
+            pickup = new Vector2Int(px, pz);
+            drop   = new Vector2Int(dx, dz);
+        }
+    }
+
+    static readonly InserterSpec[] Inserters =
+    {
+        new InserterSpec( 0,  3, 1,  3,  -1,  3),
+        new InserterSpec(-3,  0, -3,  1, -3, -1),
+        new InserterSpec( 0, -3, -1, -3,  1, -3),
+        //new InserterSpec( 3,  0,  3,  -1,  3, 1),
     };
 
     void Start()
     {
         if (PrefabManager.Instance == null)
             gameObject.AddComponent<PrefabManager>();
-
         if (ConveyorManager.Instance == null)
             gameObject.AddComponent<ConveyorManager>();
 
         SpawnGround();
-
         if (!spawnLoopsOnStart) return;
 
         int size = Mathf.Max(2, loopSize);
@@ -46,11 +56,29 @@ public class GameManager : MonoBehaviour
             SpawnBeltLoop(loopOrigins[i], size, size, reverse);
             SpawnLoopPackages(loopOrigins[i], size, size, packagesPerLoop);
         }
+
+        for (int i = 0; i < Inserters.Length; i++)
+        {
+            var spec = Inserters[i];
+            SpawnInserter(spec.cell, spec.pickup, spec.drop);
+        }
         
-        SpawnInserter(new Vector2Int( 0,  3), new Vector2Int(1,  3), new Vector2Int( -1,  3));
-        SpawnInserter(new Vector2Int(-3,  0), new Vector2Int(-3,  1), new Vector2Int(-3, -1));
-        SpawnInserter(new Vector2Int( 0, -3), new Vector2Int(-1, -3), new Vector2Int( 1, -3));
-        SpawnInserter(new Vector2Int( 3,  0), new Vector2Int( 3,  -1), new Vector2Int( 3, 1));
+        SpawnChest(new Vector2Int(7,3),1 ,1 );
+        SpawnChest(new Vector2Int(7,-3),1 ,1 );
+        
+        SpawnInserter(new Vector2Int(6,3), new Vector2Int(7,3), new Vector2Int(5,3));
+        SpawnInserter(new Vector2Int(6,-3), new Vector2Int(5,-3), new Vector2Int(7,-3));
+
+        var cm = ConveyorManager.Instance;
+        if (cm == null) return;
+        
+        for (int i = -1; i < 2; i++)
+        {
+            cm.PlaceStraight(new Vector2Int(7, i), 180f, 1, BeltDirection.Clockwise);
+        }
+        
+        SpawnInserter(new Vector2Int(7,2), new Vector2Int(7,1), new Vector2Int(7,3));
+        SpawnInserter(new Vector2Int(7,-2), new Vector2Int(7,-3), new Vector2Int(7,-1));
     }
 
     public void SpawnInserter(Vector2Int cell, Vector2Int pickupCell, Vector2Int dropOffCell)
@@ -59,8 +87,7 @@ public class GameManager : MonoBehaviour
         var cm = ConveyorManager.Instance;
         if (pm == null || pm.GetInserter() == null || cm == null) return;
 
-        Vector3 world = new Vector3(cell.x + 0.5f, 0f, cell.y + 0.5f);
-        var go = Instantiate(pm.GetInserter(), world, Quaternion.identity);
+        var go = Instantiate(pm.GetInserter(), CoreConfig.CellCenter(cell), Quaternion.identity);
         go.name = $"Inserter_{cell.x}_{cell.y}";
 
         var placeable = go.GetComponent<Placeable>();
@@ -71,24 +98,22 @@ public class GameManager : MonoBehaviour
         if (ins == null) return;
 
         ins.Connect(
-            SocketAt(cm, pickupCell),
-            SocketAt(cm, dropOffCell));
+            SocketAt(cm, pickupCell,  cell),
+            SocketAt(cm, dropOffCell, cell));
     }
 
-    static ConnectionPoint SocketAt(ConveyorManager cm, Vector2Int cell)
+    static ConnectionPoint SocketAt(ConveyorManager cm, Vector2Int target, Vector2Int inserterCell)
     {
-        Conveyor belt = cm.GetAt(cell);
-        if (belt == null)
-        {
-            Debug.LogWarning($"No belt at {cell} to connect.");
-            return null;
-        }
-        if (belt.connectionPoint == null)
-        {
-            Debug.LogWarning($"Belt at {cell} has no ConnectionPoint. Rebuild conveyor prefabs.");
-            return null;
-        }
-        return belt.connectionPoint;
+        Conveyor belt = cm.GetAt(target);
+        if (belt != null && belt.connectionPoint != null)
+            return belt.connectionPoint;
+
+        Container chest = Container.GetAt(target);
+        if (chest != null)
+            return chest.PortFacing(inserterCell);
+
+        Debug.LogWarning($"No socket at {target}.");
+        return null;
     }
 
     public void SpawnBeltLoop(Vector2Int origin, int sizeX, int sizeZ, bool reverse = false)
@@ -96,36 +121,32 @@ public class GameManager : MonoBehaviour
         var cm = ConveyorManager.Instance;
         if (cm == null) return;
 
-        sizeX = Mathf.Max(2, sizeX);
-        sizeZ = Mathf.Max(2, sizeZ);
+        LoopBounds(origin, sizeX, sizeZ, out int x0, out int z0, out int x1, out int z1);
 
-        int x0 = origin.x - (sizeX - 1) / 2;
-        int z0 = origin.y - (sizeZ - 1) / 2;
-        int x1 = x0 + sizeX - 1;
-        int z1 = z0 + sizeZ - 1;
+        var dir = reverse ? BeltDirection.Clockwise : BeltDirection.AntiClockwise;
 
-        var cornerDir   = reverse ? BeltDirection.Clockwise : BeltDirection.AntiClockwise;
-        var straightDir = reverse ? BeltDirection.Clockwise : BeltDirection.AntiClockwise;
-
-        cm.PlaceCorner(new Vector2Int(x0, z0), 270f, 1, cornerDir);
-        cm.PlaceCorner(new Vector2Int(x0, z1),   0f, 1, cornerDir);
-        cm.PlaceCorner(new Vector2Int(x1, z1),  90f, 1, cornerDir);
-        cm.PlaceCorner(new Vector2Int(x1, z0), 180f, 1, cornerDir);
+        cm.PlaceCorner(new Vector2Int(x0, z0), 270f, 1, dir);
+        cm.PlaceCorner(new Vector2Int(x0, z1),   0f, 1, dir);
+        cm.PlaceCorner(new Vector2Int(x1, z1),  90f, 1, dir);
+        cm.PlaceCorner(new Vector2Int(x1, z0), 180f, 1, dir);
 
         for (int z = z0 + 1; z <= z1 - 1; z++)
         {
-            cm.PlaceStraight(new Vector2Int(x0, z), 180f, 1, straightDir);
-            cm.PlaceStraight(new Vector2Int(x1, z),   0f, 1, straightDir);
+            cm.PlaceStraight(new Vector2Int(x0, z), 180f, 1, dir);
+            cm.PlaceStraight(new Vector2Int(x1, z),   0f, 1, dir);
         }
         for (int x = x0 + 1; x <= x1 - 1; x++)
         {
-            cm.PlaceStraight(new Vector2Int(x, z0),  90f, 1, straightDir);
-            cm.PlaceStraight(new Vector2Int(x, z1), 270f, 1, straightDir);
+            cm.PlaceStraight(new Vector2Int(x, z0),  90f, 1, dir);
+            cm.PlaceStraight(new Vector2Int(x, z1), 270f, 1, dir);
         }
     }
 
     void SpawnLoopPackages(Vector2Int origin, int sizeX, int sizeZ, int count)
     {
+        var cm = ConveyorManager.Instance;
+        if (cm == null) return;
+
         var cells = LoopCells(origin, sizeX, sizeZ);
         if (cells.Count == 0) return;
 
@@ -135,24 +156,20 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             int idx = Mathf.Min(cells.Count - 1, Mathf.RoundToInt(i * step));
-            var rider = ConveyorManager.Instance.SpawnPackage(cells[idx]);
+            var rider = cm.SpawnPackage(cells[idx]);
             if (rider == null) continue;
 
-            Color c = PackageColors[i % PackageColors.Length];
-            TintPackage(rider.gameObject, c);
+            var pkg = rider.GetComponent<Package>();
+            if (pkg != null)
+                pkg.SetItem(ItemConfig.RandomOre());
         }
     }
 
     static List<Vector2Int> LoopCells(Vector2Int origin, int sizeX, int sizeZ)
     {
-        sizeX = Mathf.Max(2, sizeX);
-        sizeZ = Mathf.Max(2, sizeZ);
-        int x0 = origin.x - (sizeX - 1) / 2;
-        int z0 = origin.y - (sizeZ - 1) / 2;
-        int x1 = x0 + sizeX - 1;
-        int z1 = z0 + sizeZ - 1;
+        LoopBounds(origin, sizeX, sizeZ, out int x0, out int z0, out int x1, out int z1);
 
-        var cells = new List<Vector2Int>();
+        var cells = new List<Vector2Int>((x1 - x0 + z1 - z0) * 2);
         for (int x = x0; x <= x1; x++) cells.Add(new Vector2Int(x, z0));
         for (int z = z0 + 1; z <= z1; z++) cells.Add(new Vector2Int(x1, z));
         for (int x = x1 - 1; x >= x0; x--) cells.Add(new Vector2Int(x, z1));
@@ -160,31 +177,44 @@ public class GameManager : MonoBehaviour
         return cells;
     }
 
-    static void TintPackage(GameObject go, Color color)
+    static void LoopBounds(Vector2Int origin, int sizeX, int sizeZ,
+                           out int x0, out int z0, out int x1, out int z1)
     {
-        var pkg = go.GetComponent<Package>();
-        if (pkg != null)
-        {
-            pkg.SetColor(color);
-            return;
-        }
-
-        var rend = go.GetComponent<Renderer>();
-        if (rend != null) rend.material.color = color;
+        sizeX = Mathf.Max(2, sizeX);
+        sizeZ = Mathf.Max(2, sizeZ);
+        x0 = origin.x - (sizeX - 1) / 2;
+        z0 = origin.y - (sizeZ - 1) / 2;
+        x1 = x0 + sizeX - 1;
+        z1 = z0 + sizeZ - 1;
     }
 
     public void SpawnGround()
     {
-        if (PrefabManager.Instance == null || PrefabManager.Instance.groundPrefab == null)
-            return;
-
-        if (GameObject.Find("Ground") != null)
-            return;
+        var pm = PrefabManager.Instance;
+        if (pm == null || pm.groundPrefab == null) return;
+        if (GameObject.Find("Ground") != null) return;
 
         var go = Instantiate(
-            PrefabManager.Instance.groundPrefab,
+            pm.groundPrefab,
             new Vector3(0f, GroundConfig.GroundY, 0f),
             Quaternion.identity);
         go.name = "Ground";
+    }
+    
+    public Container SpawnChest(Vector2Int cell, int portsX = 1, int portsZ = 1)
+    {
+        var pm = PrefabManager.Instance;
+        if (pm == null) return null;
+        GameObject prefab = pm.GetChest(portsX, portsZ);
+        if (prefab == null) return null;
+
+        var go = Instantiate(prefab, CoreConfig.CellCenter(cell), Quaternion.identity);
+        go.name = $"Chest_{portsX}x{portsZ}_{cell.x}_{cell.y}";
+
+        var placeable = go.GetComponent<Placeable>();
+        if (placeable != null)
+            placeable.SetGridPosition(cell);
+
+        return go.GetComponent<Container>();
     }
 }

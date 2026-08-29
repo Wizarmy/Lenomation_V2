@@ -239,7 +239,11 @@ public static class VisualsUtility
         {
             top.Add(topCentre); top.Add(topArc + i + 1); top.Add(topArc + i);
             bot.Add(bottomCentre); bot.Add(bottomArc + i); bot.Add(bottomArc + i + 1);
-            AddQuad(side, bottomArc + i, topArc + i, topArc + i + 1, bottomArc + i + 1);
+
+            int b0 = bottomArc + i, b1 = bottomArc + i + 1;
+            int t0 = topArc + i,    t1 = topArc + i + 1;
+            side.Add(b0); side.Add(t0); side.Add(t1);
+            side.Add(b0); side.Add(t1); side.Add(b1);
         }
 
         return FinishSubmeshes(name, verts, top, bot, side);

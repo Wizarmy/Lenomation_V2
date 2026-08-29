@@ -23,20 +23,14 @@ public class GridOverlay : MonoBehaviour
     // ------------------------------------------------------------------
     // Grid ↔ World helpers  (centre of (0,0) = (0.5, 0.5) * TileSize)
     // ------------------------------------------------------------------
-    public static Vector3 GridToWorldCenter(int gx, int gz)
-    {
-        float s = CoreConfig.TileSize;
-        return new Vector3(
-            (gx + 0.5f) * s,
-            GroundConfig.GroundY + GridConfig.HeightOffset,
-            (gz + 0.5f) * s);
-    }
+    public static Vector3 GridToWorldCenter(int gx, int gz) =>
+        CoreConfig.CellCenter(gx, gz, GroundConfig.GroundY + GridConfig.HeightOffset);
 
     public static void WorldToGrid(Vector3 world, out int gx, out int gz)
     {
-        float s = CoreConfig.TileSize;
-        gx = Mathf.FloorToInt(world.x / s);
-        gz = Mathf.FloorToInt(world.z / s);
+        Vector2Int cell = CoreConfig.WorldToCell(world);
+        gx = cell.x;
+        gz = cell.y;
     }
 
     // ------------------------------------------------------------------

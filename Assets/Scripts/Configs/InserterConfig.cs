@@ -29,6 +29,7 @@ public static class InserterConfig
 
     public const int BoomSections = 3;
     public const float BoomOverlap = 0.12f;
+    public const float Boom0Nested = 0.08f;
 
     public const float MagnetRadius = 0.06f;
     public const float MagnetHeight = 0.05f;

@@ -12,14 +12,7 @@ public class ConnectionPoint : MonoBehaviour
 
     public Package Occupant { get; private set; }
 
-    public Vector2Int Cell
-    {
-        get
-        {
-            Vector3 p = transform.position;
-            return new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.z));
-        }
-    }
+    public Vector2Int Cell => CoreConfig.WorldToCell(transform.position);
 
     public bool AllowsPickup  => kind == ConnectionType.Pickup  || kind == ConnectionType.Both;
     public bool AllowsDropOff => kind == ConnectionType.DropOff || kind == ConnectionType.Both;

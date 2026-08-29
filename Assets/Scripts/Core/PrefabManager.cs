@@ -1,5 +1,7 @@
-using UnityEditor;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class PrefabManager : MonoBehaviour
 {
@@ -7,39 +9,35 @@ public class PrefabManager : MonoBehaviour
 
     [Header("Ground")]
     public GameObject groundPrefab;
-    
+
     [Header("Conveyors")]
-    public  GameObject[] straightPrefabs = new GameObject[5];
-    public GameObject[] cornerPrefabs=new GameObject[5];
+    public GameObject[] straightPrefabs = new GameObject[5];
+    public GameObject[] cornerPrefabs   = new GameObject[5];
     public GameObject endCapPrefab;
     public GameObject linkPrefab;
-    
+
     [Header("Inserters")]
     public GameObject inserterPrefab;
     
+    [Header("Containers")]
+    public GameObject[] chestPrefabs;
+
     [Header("Items")]
     public GameObject packagePrefab;
-    
+
     [Header("Arrow")]
     public GameObject straightArrowPrefab;
-    
+
     [Header("GuardRail")]
     public GameObject guardRailPrefab;
     public GameObject endCapGuardRailPrefab;
 
-    public static string EndCapGuardRailMeshPath =>
-        PathingConfig.EndCapFolder + "EndCapGuardRailMesh.asset";
-    public static string EndCapGuardRailPrefabPath =>
-        PathingConfig.EndCapFolder + "EndCapGuardRail.prefab";
+    public static string EndCapGuardRailMeshPath   => PathingConfig.EndCapFolder + "EndCapGuardRailMesh.asset";
+    public static string EndCapGuardRailPrefabPath => PathingConfig.EndCapFolder + "EndCapGuardRail.prefab";
+    public static string GuardRailMeshPath         => PathingConfig.StraightFolder + "GuardRailMesh.asset";
+    public static string GuardRailPrefabPath       => PathingConfig.StraightFolder + "GuardRail.prefab";
+    public static string EndCapPrefabPath          => PathingConfig.EndCapFolder + "EndCapConveyor.prefab";
 
-    public static string GuardRailMeshPath =>
-        PathingConfig.StraightFolder + "GuardRailMesh.asset";
-    public static string GuardRailPrefabPath =>
-        PathingConfig.StraightFolder + "GuardRail.prefab";
-    
-    public static string EndCapPrefabPath =>
-        PathingConfig.EndCapFolder + "EndCapConveyor.prefab";
-    
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -48,62 +46,68 @@ public class PrefabManager : MonoBehaviour
             return;
         }
         Instance = this;
-        
-        PathingUtility.EnsureAllFolders();
 
+#if UNITY_EDITOR
+        PathingUtility.EnsureAllFolders();
+#endif
         LoadAllPrefabs();
     }
 
     public void LoadAllPrefabs()
     {
-        groundPrefab = LoadSingle(PathingConfig.GroundFolder + "Ground.prefab",
+        groundPrefab = LoadSingle(
+            PathingConfig.GroundFolder + "Ground.prefab",
             "Prefabs/Logistics/Ground/Ground");
-        
+
         straightPrefabs = LoadLevelPrefabs(PathingConfig.StraightFolder, "StraightConveyor_L");
+        cornerPrefabs   = LoadLevelPrefabs(PathingConfig.CornerFolder,   "CornerConveyor_L");
+
         endCapPrefab = LoadSingle(
             PathingConfig.EndCapFolder + "EndCapConveyor.prefab",
             "Prefabs/Logistics/EndCapConveyor");
-        
+
         linkPrefab = LoadSingle(
             PathingConfig.LinkFolder + "LinkConveyor.prefab",
             "Prefabs/Logistics/LinkConveyor");
-        
-        cornerPrefabs = LoadLevelPrefabs(PathingConfig.CornerFolder,"CornerConveyor_L");
-        
+
         packagePrefab = LoadSingle(
             PackageConfig.PrefabPath,
             "Prefabs/Logistics/Items/Package");
 
-        // in LoadAllPrefabs:
-        inserterPrefab = LoadSingle(InserterConfig.PrefabPath, "Prefabs/Logistics/Inserters/Inserter");
+        inserterPrefab = LoadSingle(
+            InserterConfig.PrefabPath,
+            "Prefabs/Logistics/Inserters/Inserter");
         
-        straightArrowPrefab = EnsureArrowPrefab();
-        guardRailPrefab = EnsureGuardRailPrefab();
-        endCapGuardRailPrefab = EnsureEndCapGuardRailPrefab();
-    }
-    
-   GameObject[] LoadLevelPrefabs(string folder, string baseName)
-    {
-        GameObject[] result = new GameObject[5];
+        var sizes = ContainerConfig.ChestSizes;
+        chestPrefabs = new GameObject[sizes.Length];
+        for (int i = 0; i < sizes.Length; i++)
+        {
+            chestPrefabs[i] = LoadSingle(
+                ContainerConfig.PrefabPath(sizes[i].x, sizes[i].y),
+                $"Prefabs/Logistics/Containers/Chest_{sizes[i].x}x{sizes[i].y}");
+        }
 
+#if UNITY_EDITOR
+        straightArrowPrefab   = EnsureArrowPrefab();
+        guardRailPrefab       = EnsureGuardRailPrefab();
+        endCapGuardRailPrefab = EnsureEndCapGuardRailPrefab();
+#endif
+    }
+
+    GameObject[] LoadLevelPrefabs(string folder, string baseName)
+    {
+        var result = new GameObject[5];
         for (int i = 0; i < 5; i++)
         {
             int level = i + 1;
-            string path = $"{folder}{baseName}{level}.prefab";
-
-#if UNITY_EDITOR
-            result[i] = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-#else
-            result[i] = Resources.Load<GameObject>($"Prefabs/Logistics/{baseName}{level}");
-#endif
-
-            if (result[i] == null)
-                Debug.LogError($"Could not load prefab: {path}");
+            string editorPath = $"{folder}{baseName}{level}.prefab";
+            result[i] = LoadSingle(editorPath, $"Prefabs/Logistics/{baseName}{level}");
         }
-
         return result;
     }
     
+    
+
     GameObject LoadSingle(string editorPath, string resourcesPath)
     {
 #if UNITY_EDITOR
@@ -115,7 +119,15 @@ public class PrefabManager : MonoBehaviour
             Debug.LogError($"Could not load prefab: {editorPath}");
         return prefab;
     }
-    
+
+    public GameObject GetStraight(int level) => straightPrefabs[Mathf.Clamp(level - 1, 0, 4)];
+    public GameObject GetCorner(int level)   => cornerPrefabs[Mathf.Clamp(level - 1, 0, 4)];
+    public GameObject GetEndCap()            => endCapPrefab;
+    public GameObject GetLink()              => linkPrefab;
+    public GameObject GetPackage()           => packagePrefab;
+    public GameObject GetInserter()          => inserterPrefab;
+
+#if UNITY_EDITOR
     public static GameObject EnsureMeshPrefab(
         string prefabPath, string meshPath, string objectName, System.Func<Mesh> buildMesh)
     {
@@ -123,7 +135,7 @@ public class PrefabManager : MonoBehaviour
         if (existing != null) return existing;
 
         PathingUtility.EnsureAllFolders();
-        var mat = VisualsUtility.GetOrCreateMaterial("ConveyorGuardRail", ConveyorConfig.GuardRailColor);
+        var mat  = VisualsUtility.GetOrCreateMaterial("ConveyorGuardRail", ConveyorConfig.GuardRailColor);
         var mesh = buildMesh();
         AssetDatabase.CreateAsset(mesh, meshPath);
 
@@ -143,7 +155,7 @@ public class PrefabManager : MonoBehaviour
     public static GameObject EnsureEndCapGuardRailPrefab() =>
         EnsureMeshPrefab(EndCapGuardRailPrefabPath, EndCapGuardRailMeshPath, "EndCapGuardRail",
             VisualsUtility.CreateEndCapGuardRailMesh);
-    
+
     static GameObject InstantiateRail(GameObject prefab, Transform parent)
     {
         var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -161,16 +173,14 @@ public class PrefabManager : MonoBehaviour
 
     public static GameObject InstantiateEndCapGuardRail(Transform parent) =>
         InstantiateRail(EnsureEndCapGuardRailPrefab(), parent);
-    
+
     public static GameObject EnsureArrowPrefab()
     {
         GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(ArrowConfig.ArrowPrefabPath);
         if (existing != null)
             return existing;
-        
 
         Material arrowMat = VisualsUtility.GetOrCreateMaterial("ConveyorArrow", ArrowConfig.ArrowColor);
-
         Mesh arrowMesh = VisualsUtility.CreateStraightArrowMesh();
         AssetDatabase.CreateAsset(arrowMesh, ArrowConfig.ArrowMeshPath);
 
@@ -180,18 +190,15 @@ public class PrefabManager : MonoBehaviour
 
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, ArrowConfig.ArrowPrefabPath);
         Object.DestroyImmediate(root);
-
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         return prefab;
     }
-    
-    
+
     public static GameObject InstantiateArrow(
         Transform parent, string name, Vector3 localPos, Quaternion localRot, float scale = 1f)
     {
-        GameObject prefab = EnsureArrowPrefab();
-        GameObject arrow = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        GameObject arrow = (GameObject)PrefabUtility.InstantiatePrefab(EnsureArrowPrefab());
         arrow.name = name;
         arrow.transform.SetParent(parent, false);
         arrow.transform.localPosition = localPos;
@@ -200,12 +207,14 @@ public class PrefabManager : MonoBehaviour
         return arrow;
     }
     
-    public GameObject GetStraight(int level) => straightPrefabs[Mathf.Clamp(level - 1, 0, 4)];
-
-    public GameObject GetEndCap() => endCapPrefab;
-    public GameObject GetLink() => linkPrefab;
-    public GameObject GetCorner(int level) => cornerPrefabs[Mathf.Clamp(level - 1, 0, 4)];
-    public GameObject GetPackage() => packagePrefab;
-    public GameObject GetInserter() => inserterPrefab;
-
+    public GameObject GetChest(int portsX, int portsZ)
+    {
+        if (chestPrefabs == null) return null;
+        var sizes = ContainerConfig.ChestSizes;
+        for (int i = 0; i < sizes.Length && i < chestPrefabs.Length; i++)
+            if (sizes[i].x == portsX && sizes[i].y == portsZ)
+                return chestPrefabs[i];
+        return chestPrefabs.Length > 0 ? chestPrefabs[0] : null;
+    }
+#endif
 }

@@ -579,6 +579,7 @@ MonoBehaviour:
   endCapPrefab: {fileID: 0}
   linkPrefab: {fileID: 0}
   inserterPrefab: {fileID: 0}
+  chestPrefabs: []
   packagePrefab: {fileID: 0}
   straightArrowPrefab: {fileID: 0}
   guardRailPrefab: {fileID: 0}

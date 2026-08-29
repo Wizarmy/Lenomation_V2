@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Conveyor : Placeable
 {
+    const float PathEps = 0.02f;
+
     [Header("Settings")]
     public float moveSpeed = ConveyorConfig.DefaultMoveSpeed;
     public int maxItems = ConveyorConfig.MaxItemsPerBelt;
@@ -13,10 +16,11 @@ public class Conveyor : Placeable
 
     [Header("Type & Direction")]
     public ConveyorPieceType pieceType = ConveyorPieceType.Straight;
-    public BeltDirection direction = BeltDirection.Clockwise;
+    public BeltDirection direction = BeltDirection.AntiClockwise;
 
     public bool isCorner => pieceType == ConveyorPieceType.Corner;
     public bool isEndCap => pieceType == ConveyorPieceType.EndCap;
+    public bool isLink   => pieceType == ConveyorPieceType.Link;
 
     [Header("Ports (null on EndCap)")]
     public Transform entryPoint;
@@ -24,19 +28,19 @@ public class Conveyor : Placeable
     public ConnectionPoint connectionPoint;
 
     public bool HasEntry => !isEndCap && entryPoint != null;
-    public bool HasExit  => !isEndCap && exitPoint != null;
+    public bool HasExit  => !isEndCap && exitPoint  != null;
 
     [Header("Connection (auto-detected)")]
     public Conveyor nextConveyor;
     public Conveyor previousConveyor;
-    
+
     public readonly List<PackageRider> riders = new List<PackageRider>();
+
+    public event Action RidersChanged;
 
     float pathLength;
     Transform cachedTransform;
     bool arrowsNeedFlip;
-    
-    public event System.Action RidersChanged;
 
     public float PathLength => pathLength;
 
@@ -70,8 +74,8 @@ public class Conveyor : Placeable
     float StraightLengthWithLinks()
     {
         float len = ConveyorConfig.StraightPathLength;
-        if (nextConveyor     != null) len += ConveyorConfig.LinkLength;
         if (previousConveyor != null) len += ConveyorConfig.LinkLength;
+        if (nextConveyor != null)     len += ConveyorConfig.LinkLength;
         return len;
     }
 
@@ -80,32 +84,24 @@ public class Conveyor : Placeable
         direction = newDirection;
         ApplyDirectionVisuals();
 
-        if (ConveyorManager.Instance != null && !isEndCap)
+        if (ConveyorManager.Instance != null && !isEndCap && !isLink)
             ConveyorManager.Instance.RebuildConnectionsAround(this);
     }
 
-    // ------------------------------------------------------------------
-    // Path eval  (distance along this piece, 0 = start of travel)
-    // ------------------------------------------------------------------
-
-    public Vector3 EvaluatePosition(float distance)
-    {
-        return EvaluatePosition01(Normalize(distance));
-    }
+    public Vector3 EvaluatePosition(float distance) =>
+        EvaluatePosition01(Normalize(distance));
 
     public Vector3 EvaluatePosition01(float t)
     {
         t = Mathf.Clamp01(t);
-        if (isCorner) return EvaluateCorner(t);
-        return EvaluateStraight(t);
+        return isCorner ? EvaluateCorner(t) : EvaluateStraight(t);
     }
 
     public Vector3 EvaluateForward(float distance)
     {
         float t = Normalize(distance);
-        const float eps = 0.02f;
-        Vector3 a = EvaluatePosition01(Mathf.Max(0f, t - eps));
-        Vector3 b = EvaluatePosition01(Mathf.Min(1f, t + eps));
+        Vector3 a = EvaluatePosition01(Mathf.Max(0f, t - PathEps));
+        Vector3 b = EvaluatePosition01(Mathf.Min(1f, t + PathEps));
         Vector3 dir = b - a;
         dir.y = 0f;
         if (dir.sqrMagnitude < 1e-8f)
@@ -117,19 +113,16 @@ public class Conveyor : Placeable
     {
         Vector3 fwd = EvaluateForward(distance);
         if (fwd.sqrMagnitude < 1e-8f)
-            return cachedTransform != null ? cachedTransform.rotation : transform.rotation;
+            return Self.rotation;
         return Quaternion.LookRotation(fwd, Vector3.up);
     }
 
-    float Normalize(float distance)
-    {
-        if (pathLength <= 1e-6f) return 0f;
-        return Mathf.Clamp01(distance / pathLength);
-    }
+    float Normalize(float distance) =>
+        pathLength <= 1e-6f ? 0f : Mathf.Clamp01(distance / pathLength);
 
     Vector3 EvaluateStraight(float t)
     {
-        Transform self = cachedTransform != null ? cachedTransform : transform;
+        Transform self = Self;
         Vector3 entry = entryPoint != null ? entryPoint.position : self.position;
         Vector3 exit  = exitPoint  != null ? exitPoint.position  : self.position;
 
@@ -142,16 +135,16 @@ public class Conveyor : Placeable
             travel = TravelWorldDir() * ConveyorConfig.StraightPathLength;
 
         Vector3 unit = travel.normalized;
-        if (previousConveyor != null) start -= unit * ConveyorConfig.LinkLength;
-        if (nextConveyor     != null) end   += unit * ConveyorConfig.LinkLength;
+        if (previousConveyor != null)
+            start -= unit * ConveyorConfig.LinkLength;
+        if (nextConveyor != null)
+            end   += unit * ConveyorConfig.LinkLength;
 
         return Vector3.Lerp(start, end, t);
     }
 
     Vector3 EvaluateCorner(float t)
     {
-        // Local arc: centre SE (0.5, −0.5), in −Z, out +X.
-        // Clockwise: π → π/2. AntiClockwise: π/2 → π.
         float midR = (ConveyorConfig.CornerInnerRadius + ConveyorConfig.CornerOuterRadius) * 0.5f;
         float angle = direction == BeltDirection.AntiClockwise
             ? Mathf.Lerp(Mathf.PI * 0.5f, Mathf.PI, t)
@@ -162,13 +155,12 @@ public class Conveyor : Placeable
             ConveyorConfig.BeltHeight,
             -0.5f + Mathf.Sin(angle) * midR);
 
-        Transform self = cachedTransform != null ? cachedTransform : transform;
-        return self.TransformPoint(local);
+        return Self.TransformPoint(local);
     }
 
     Vector3 TravelWorldDir()
     {
-        Transform self = cachedTransform != null ? cachedTransform : transform;
+        Transform self = Self;
         if (isCorner)
         {
             return direction == BeltDirection.AntiClockwise
@@ -183,38 +175,38 @@ public class Conveyor : Placeable
 
     void ApplyDirectionVisuals()
     {
-        if (isEndCap) return;
+        if (isEndCap || isLink) return;
 
         bool shouldFlip = isCorner
-            ? (direction == BeltDirection.AntiClockwise)
-            : (direction == BeltDirection.Clockwise);
+            ? direction == BeltDirection.AntiClockwise
+            : direction == BeltDirection.Clockwise;
 
-        if (shouldFlip != arrowsNeedFlip)
-        {
-            FlipAllArrows();
-            arrowsNeedFlip = shouldFlip;
-        }
+        if (shouldFlip == arrowsNeedFlip) return;
+        FlipAllArrows();
+        arrowsNeedFlip = shouldFlip;
     }
 
     void FlipAllArrows()
     {
-        foreach (Transform child in cachedTransform)
+        foreach (Transform child in Self)
         {
-            if (child.name.StartsWith("Arrow"))
+            if (child.name.StartsWith("Arrow", StringComparison.Ordinal))
                 child.localRotation *= Quaternion.Euler(0f, 180f, 0f);
         }
     }
-    
+
     public void RegisterRider(PackageRider rider)
     {
-        if (rider != null && !riders.Contains(rider))
-            riders.Add(rider);
+        if (rider == null || riders.Contains(rider)) return;
+        riders.Add(rider);
         RidersChanged?.Invoke();
     }
 
     public void UnregisterRider(PackageRider rider)
     {
-        if (riders.Remove(rider))
-            RidersChanged?.Invoke();
+        if (!riders.Remove(rider)) return;
+        RidersChanged?.Invoke();
     }
+
+    Transform Self => cachedTransform != null ? cachedTransform : transform;
 }
